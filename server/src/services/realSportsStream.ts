@@ -4,46 +4,124 @@ import { config } from '../config';
 
 export const streamEvents = new EventEmitter();
 
+// In-memory store of current game states so we can serve them via REST
+export const currentGames: Map<string, GameTick> = new Map();
+
+/* =========================
+   ✅ TYPES (FIX FOR TS ERROR)
+========================= */
+
+type SofascoreEvent = {
+  id: number;
+  status?: {
+    type?: string;
+    description?: string;
+  };
+  homeTeam?: {
+    name?: string;
+    shortName?: string;
+  };
+  awayTeam?: {
+    name?: string;
+    shortName?: string;
+  };
+  homeScore?: { current?: number };
+  awayScore?: { current?: number };
+  tournament?: {
+    sport?: { name?: string };
+  };
+  sport?: { name?: string };
+};
+
+type SofascoreResponse = {
+  events?: SofascoreEvent[];
+};
+
+/* =========================
+   🚀 MAIN STREAM
+========================= */
+
 export function startExternalStream() {
   console.log(`📡 Sofascore Engine: Online & Polling...`);
 
   const fetchLiveGames = async () => {
     try {
-      // Endpoint for all live matches currently happening
-      const response = await fetch('https://sofascore.p.rapidapi.com/matches/list-live', {
-        headers: {
-          'x-rapidapi-key': config.rapidApiKey,
-          'x-rapidapi-host': 'sofascore.p.rapidapi.com'
-        }
-      });
-      
-      const data = await response.json();
+      const today = new Date().toISOString().split('T')[0];
 
-      // Sofascore returns games in an 'events' array
-      if (!data.events || data.events.length === 0) {
-        console.log('💤 No live matches found on Sofascore right now.');
+      const response = await fetch(
+        `https://sofascore.p.rapidapi.com/matches/list-by-date?date=${today}&timezone=UTC`,
+        {
+          headers: {
+            'x-rapidapi-key': config.rapidApiKey,
+            'x-rapidapi-host': 'sofascore.p.rapidapi.com',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`❌ Sofascore API error: ${response.status} ${response.statusText}`);
         return;
       }
 
-      data.events.forEach((event: any) => {
-        // We only want major sports to keep the dashboard clean
-        const sportName = event.sport.name.toLowerCase();
-        if (sportName === 'football' || sportName === 'basketball') {
-          
-          const liveTick: GameTick = {
-            gameId: `SOFA-${event.id}`,
-            sport: sportName === 'football' ? 'soccer' : 'basketball',
-            homeTeam: event.homeTeam.shortName || event.homeTeam.name,
-            awayTeam: event.awayTeam.shortName || event.awayTeam.name,
-            homeScore: event.homeScore.current || 0,
-            awayScore: event.awayScore.current || 0,
-            clock: event.status.description || 'LIVE',
-            status: event.status.type === 'finished' ? 'finished' : 'live'
-          };
+      // ✅ FIX: Proper typing
+      const data: SofascoreResponse = await response.json();
 
-          // Push to our WebSocket subscribers
-          streamEvents.emit('tick', liveTick);
-        }
+      if (!data.events || data.events.length === 0) {
+        console.log('💤 No matches found for today.');
+        return;
+      }
+
+      // ✅ Only LIVE matches
+      const liveEvents = data.events.filter(
+        (e) => e.status?.type === 'inprogress'
+      );
+
+      if (liveEvents.length === 0) {
+        console.log('💤 No live matches right now.');
+        return;
+      }
+
+      console.log(`✅ Found ${liveEvents.length} live events`);
+
+      // Clear stale games
+      currentGames.clear();
+
+      liveEvents.forEach((event) => {
+        const sportName = (
+          event.tournament?.sport?.name ||
+          event.sport?.name ||
+          ''
+        ).toLowerCase();
+
+        // Only football + basketball
+        if (sportName !== 'football' && sportName !== 'basketball') return;
+
+        const gameId = `SOFA-${event.id}`;
+
+        const liveTick: GameTick = {
+          gameId,
+          sport: sportName === 'football' ? 'soccer' : 'basketball',
+          homeTeam:
+            event.homeTeam?.shortName ||
+            event.homeTeam?.name ||
+            'Home',
+          awayTeam:
+            event.awayTeam?.shortName ||
+            event.awayTeam?.name ||
+            'Away',
+          homeScore: event.homeScore?.current ?? 0,
+          awayScore: event.awayScore?.current ?? 0,
+          clock: event.status?.description || 'LIVE',
+          status:
+            event.status?.type === 'finished'
+              ? 'finished'
+              : 'live',
+        };
+
+        currentGames.set(gameId, liveTick);
+
+        // Broadcast update
+        streamEvents.emit('tick', liveTick);
       });
 
     } catch (error) {
@@ -51,9 +129,9 @@ export function startExternalStream() {
     }
   };
 
-  // Poll every 2 minutes (120,000ms) 
-  // This uses 30 requests per hour. You get 100 per day on free tier.
-  // Pro Tip: Run this only when testing to save your daily quota!
-  setInterval(fetchLiveGames, 120000);
-  fetchLiveGames(); 
+  // ⏱ Polling
+  setInterval(fetchLiveGames, 60000);
+
+  // First run
+  fetchLiveGames();
 }

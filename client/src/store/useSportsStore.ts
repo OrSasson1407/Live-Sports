@@ -16,18 +16,19 @@ interface SportsState {
   games: Record<string, GameTick>;
   setConnected: (status: boolean) => void;
   updateGame: (game: GameTick) => void;
+  setGames: (games: GameTick[]) => void;
 }
 
 export const useSportsStore = create<SportsState>((set) => ({
   isConnected: false,
   games: {},
   setConnected: (status) => set({ isConnected: status }),
-  
-  updateGame: (game) => 
+  updateGame: (game) =>
     set((state) => ({
-      games: {
-        ...state.games,
-        [game.gameId]: game,
-      },
+      games: { ...state.games, [game.gameId]: game },
     })),
+  setGames: (games) =>
+    set({
+      games: Object.fromEntries(games.map((g) => [g.gameId, g])),
+    }),
 }));
