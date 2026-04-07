@@ -1,0 +1,25 @@
+import { Router } from 'express';
+import * as t from '../controllers/teams.controller';
+
+const router = Router();
+router.get('/detail', t.getDetail);
+router.get('/get-logo', t.getLogo);
+router.get('/get-performance', t.getPerformance);
+router.get('/get-transfers', t.getTransfers);
+router.get('/get-squad', t.getSquad);
+router.get('/get-rankings', t.getRankings);
+router.get('/get-tournaments', t.getTournaments);
+router.get('/get-near-events', t.getNearEvents);
+router.get('/get-statistics-seasons', t.getStatisticsSeasons);
+router.get('/get-ranks', t.getRanks);
+router.get('/get-statistics', t.getStatistics);
+router.get('/get-player-statistics-seasons', t.getPlayerStatisticsSeasons);
+router.get('/get-player-statistics', t.getPlayerStatistics);
+router.get('/get-last-matches', t.getLastMatches);
+router.get('/get-next-matches', t.getNextMatches);
+router.get('/get-driver-career-history', t.getDriverCareerHistory);
+router.get('/get-stage-seasons', t.getStageSeasons);
+router.get('/get-stage-season-races', t.getStageSeasonRaces);
+router.get('/get-matches', t.getMatches);
+router.get('/search', t.searchTeams);
+export default router;

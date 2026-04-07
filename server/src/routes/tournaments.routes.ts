@@ -1,0 +1,26 @@
+import { Router } from 'express';
+import * as t from '../controllers/tournaments.controller';
+
+const router = Router();
+router.get('/list', t.getList);
+router.get('/detail', t.getDetail);
+router.get('/get-logo', t.getLogo);
+router.get('/get-trending-events', t.getTrendingEvents);
+router.get('/get-featured-events', t.getFeaturedEvents);
+router.get('/get-scheduled-events', t.getScheduledEvents);
+router.get('/get-live-events', t.getLiveEvents);
+router.get('/get-seasons', t.getSeasons);
+router.get('/get-top-players', t.getTopPlayers);
+router.get('/get-top-teams', t.getTopTeams);
+router.get('/get-rounds', t.getRounds);
+router.get('/get-team-of-the-week-rounds', t.getTotwRounds);
+router.get('/get-team-of-the-week', t.getTotw);
+router.get('/get-player-statistics', t.getPlayerStatistics);
+router.get('/get-standings', t.getStandings);
+router.get('/get-media', t.getMedia);
+router.get('/get-cuptrees', t.getCuptrees);
+router.get('/get-last-matches', t.getLastMatches);
+router.get('/get-next-matches', t.getNextMatches);
+router.get('/get-matches', t.getMatches);
+router.get('/search', t.searchTournaments);
+export default router;

@@ -1,0 +1,21 @@
+import { Router } from 'express';
+import * as p from '../controllers/players.controller';
+
+const router = Router();
+router.get('/detail', p.getDetail);
+router.get('/get-image', p.getImage);
+router.get('/get-characteristics', p.getCharacteristics);
+router.get('/get-ratings', p.getRatings);
+router.get('/get-attribute-overviews', p.getAttributeOverviews);
+router.get('/get-national-team-statistics', p.getNationalTeamStatistics);
+router.get('/get-transfer-history', p.getTransferHistory);
+router.get('/get-last-year-summary', p.getLastYearSummary);
+router.get('/get-statistics-seasons', p.getStatisticsSeasons);
+router.get('/get-all-statistics', p.getAllStatistics);
+router.get('/get-statistics', p.getStatistics);
+router.get('/get-last-matches', p.getLastMatches);
+router.get('/get-next-matches', p.getNextMatches);
+router.get('/get-last-ratings', p.getLastRatings);
+router.get('/get-matches', p.getMatches);
+router.get('/search', p.searchPlayers);
+export default router;

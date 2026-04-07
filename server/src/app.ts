@@ -1,14 +1,34 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+
+// Import Routers
 import tickerRoutes from './routes/ticker.routes';
+import generalRoutes from './routes/general.routes';
+import teamRoutes from './routes/teams.routes';
+import matchRoutes from './routes/matches.routes';
+import playerRoutes from './routes/players.routes';
+import managerRoutes from './routes/managers.routes'; 
+import tournamentRoutes from './routes/tournaments.routes'; 
+import esportRoutes from './routes/esports.routes'; 
+import tvChannelRoutes from './routes/tvchannels.routes'; 
+import stageRoutes from './routes/stages.routes'; 
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Main Domain Routes
+app.use('/api', generalRoutes); // search, categories, sports
 app.use('/api/tickers', tickerRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/players', playerRoutes);
+app.use('/api/managers', managerRoutes);
+app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/esport-games', esportRoutes);
+app.use('/api/tvchannels', tvChannelRoutes);
+app.use('/api/stages', stageRoutes);
 
 // Health Check
 app.get('/health', (req: Request, res: Response) => {
@@ -16,7 +36,6 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // UPGRADE 1: Global Error Handler
-// If any route throws an unexpected error, it gets caught here instead of crashing the Node process.
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('🚨 Unhandled Express Error:', err);
   res.status(500).json({ error: 'Internal Server Error' });
