@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSportsStore, GameTick } from './store/useSportsStore';
+import { useSportsStore } from './store/useSportsStore';
+import { useWebSocket } from './hooks/useWebSocket';
+import { Radio, Trophy, Clock, Activity } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001';
-const WS_URL = 'ws://localhost:3001';
-
-// --- Score Display with flash animation ---
+// --- Sub-Component 1: The Flashing Score Digit ---
 function ScoreDisplay({ score, isHome }: { score: number; isHome: boolean }) {
   const [flash, setFlash] = useState(false);
   const prevScore = useRef(score);
@@ -12,201 +11,160 @@ function ScoreDisplay({ score, isHome }: { score: number; isHome: boolean }) {
   useEffect(() => {
     if (score !== prevScore.current) {
       setFlash(true);
-      const t = setTimeout(() => setFlash(false), 400);
+      const timer = setTimeout(() => setFlash(false), 500); 
       prevScore.current = score;
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
   }, [score]);
 
-  const base = 'text-4xl font-mono font-bold px-4 py-2 rounded-lg transition-all duration-300';
-  const homeStyle = flash
-    ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.6)]'
-    : 'text-emerald-400 bg-emerald-400/10';
-  const awayStyle = flash
-    ? 'bg-white text-slate-900 shadow-[0_0_20px_rgba(255,255,255,0.5)]'
-    : 'text-white bg-slate-800';
+  // Flash styling for that "live betting" feel
+  const flashStyle = flash 
+    ? "bg-emerald-500 text-white scale-110 shadow-[0_0_20px_rgba(16,185,129,0.6)]" 
+    : "bg-slate-800/80 text-white scale-100";
 
   return (
-    <span className={`${base} ${isHome ? homeStyle : awayStyle}`}>{score}</span>
+    <div className={`flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl transition-all duration-300 font-mono text-3xl md:text-4xl font-black ${flashStyle}`}>
+      {score}
+    </div>
   );
 }
 
-// --- Game Card ---
-function GameCard({ game }: { game: GameTick }) {
-  const theme =
-    game.sport === 'basketball'
-      ? { border: 'border-orange-500/30', text: 'text-orange-400', bg: 'bg-orange-500/10', dot: 'bg-orange-400' }
-      : { border: 'border-emerald-500/30', text: 'text-emerald-400', bg: 'bg-emerald-500/10', dot: 'bg-emerald-400' };
+// --- Sub-Component 2: The Premium Game Card ---
+function GameCard({ gameId }: { gameId: string }) {
+  const game = useSportsStore((state) => state.games[gameId]);
 
-  const isFinished = game.status === 'finished';
+  if (!game) return null;
+
+  const isBasketball = game.sport === 'basketball';
+  const theme = isBasketball 
+    ? { color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' }
+    : { color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' };
 
   return (
-    <div className={`bg-slate-900 border ${theme.border} rounded-2xl p-6 shadow-xl flex flex-col gap-4`}>
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${theme.bg} ${theme.text}`}>
-          {game.sport === 'soccer' ? '⚽ Football' : '🏀 Basketball'}
-        </span>
-        <div className="flex items-center gap-1.5">
-          {!isFinished && (
-            <span className={`w-2 h-2 rounded-full animate-pulse ${theme.dot}`} />
-          )}
-          <span className={`text-sm font-mono ${isFinished ? 'text-slate-500' : 'text-red-400'}`}>
-            {isFinished ? 'FINAL' : game.clock}
+    <div className="group relative bg-[#0f172a] border border-slate-800 hover:border-slate-600 rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-900/10 overflow-hidden">
+      
+      {/* Background glow effect on hover */}
+      <div className={`absolute top-0 left-0 w-full h-1 ${isBasketball ? 'bg-orange-500' : 'bg-emerald-500'} opacity-50`} />
+
+      {/* Header: Sport & Clock */}
+      <div className="flex justify-between items-center mb-6">
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${theme.border} ${theme.bg}`}>
+          <Trophy className={`w-4 h-4 ${theme.color}`} />
+          <span className={`text-xs font-bold uppercase tracking-widest ${theme.color}`}>
+            {game.sport}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full">
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          <span className="text-xs font-bold text-rose-400 tracking-wider">
+            {game.clock}
           </span>
         </div>
       </div>
 
-      {/* Scores */}
-      <div className="flex justify-between items-center gap-2">
-        <div className="text-center flex-1">
-          <p className="text-base font-bold truncate mb-2">{game.homeTeam}</p>
+      {/* Main Score Area */}
+      <div className="flex items-center justify-between mb-2">
+        {/* Home Team */}
+        <div className="flex flex-col items-center flex-1 gap-3">
           <ScoreDisplay score={game.homeScore} isHome={true} />
-          <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest">Home</p>
+          <span className="text-lg font-black tracking-tight text-center leading-tight max-w-[120px] truncate">
+            {game.homeTeam}
+          </span>
+          <span className="text-xs font-semibold text-slate-500 tracking-widest uppercase">Home</span>
         </div>
-        <div className="text-slate-600 font-black text-lg">VS</div>
-        <div className="text-center flex-1">
-          <p className="text-base font-bold truncate mb-2">{game.awayTeam}</p>
+
+        {/* VS Divider */}
+        <div className="flex flex-col items-center justify-center px-4">
+          <div className="w-px h-8 bg-slate-800 mb-2" />
+          <span className="text-sm font-black text-slate-600 italic">VS</span>
+          <div className="w-px h-8 bg-slate-800 mt-2" />
+        </div>
+
+        {/* Away Team */}
+        <div className="flex flex-col items-center flex-1 gap-3">
           <ScoreDisplay score={game.awayScore} isHome={false} />
-          <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest">Away</p>
+          <span className="text-lg font-black tracking-tight text-center leading-tight max-w-[120px] truncate">
+            {game.awayTeam}
+          </span>
+          <span className="text-xs font-semibold text-slate-500 tracking-widest uppercase">Away</span>
         </div>
       </div>
     </div>
   );
 }
 
-// --- Empty / Loading States ---
-function EmptyState({ loading }: { loading: boolean }) {
-  return (
-    <div className="col-span-3 flex flex-col items-center justify-center py-24 text-slate-500">
-      {loading ? (
-        <>
-          <div className="w-10 h-10 border-2 border-slate-600 border-t-emerald-500 rounded-full animate-spin mb-4" />
-          <p className="text-sm">Fetching live games from Sofascore...</p>
-        </>
-      ) : (
-        <>
-          <p className="text-4xl mb-3">💤</p>
-          <p className="text-lg font-semibold text-slate-400">No live matches right now</p>
-          <p className="text-sm mt-1">Check back soon — games update every 60 seconds</p>
-        </>
-      )}
-    </div>
-  );
-}
+// --- Main Application UI ---
+function App() {
+  const isConnected = useSportsStore((state) => state.isConnected);
+  const games = useSportsStore((state) => state.games);
+  const liveGameIds = Object.keys(games);
 
-// --- Main App ---
-export default function App() {
-  const { games, isConnected, setConnected, updateGame, setGames } = useSportsStore();
-  const ws = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const gameList = Object.values(games);
-
-  // 1. Fetch initial game list from REST
-  const fetchGames = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/tickers/live`);
-      const data = await res.json();
-      if (data.games && data.games.length > 0) {
-        setGames(data.games);
-        setLastUpdated(new Date());
-      }
-    } catch (err) {
-      console.error('Failed to fetch live games:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 2. Connect WebSocket and subscribe to all games
-  const connectWs = (gameIds: string[]) => {
-    if (ws.current) ws.current.close();
-
-    ws.current = new WebSocket(WS_URL);
-
-    ws.current.onopen = () => {
-      setConnected(true);
-      console.log('🟢 WebSocket connected');
-      gameIds.forEach((id) => {
-        ws.current?.send(JSON.stringify({ action: 'subscribe', gameId: id }));
-      });
-    };
-
-    ws.current.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'TICK') {
-          updateGame(msg.data);
-          setLastUpdated(new Date());
-        }
-      } catch {}
-    };
-
-    ws.current.onclose = () => {
-      setConnected(false);
-      console.log('🔴 WS disconnected, reconnecting...');
-      reconnectTimer.current = window.setTimeout(() => connectWs(gameIds), 3000);
-    };
-  };
-
-  useEffect(() => {
-    fetchGames();
-    // Re-fetch REST every 60s to pick up new games
-    const pollInterval = setInterval(fetchGames, 60000);
-    return () => clearInterval(pollInterval);
-  }, []);
-
-  // When game list changes, (re)subscribe via WS
-  useEffect(() => {
-    const ids = Object.keys(games);
-    if (ids.length > 0) {
-      connectWs(ids);
-    }
-    return () => {
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      ws.current?.close();
-    };
-  }, [Object.keys(games).sort().join(',')]);
+  // Global subscription to catch all live games from the server
+  useWebSocket(['ALL']); 
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8 font-sans">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">⚡ Live Sports</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Powered by Sofascore · {gameList.length} match{gameList.length !== 1 ? 'es' : ''} live
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-2 text-sm font-medium bg-slate-900 px-4 py-2 rounded-full border border-slate-800">
-            <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-            {isConnected ? 'Live Feed Active' : 'Reconnecting...'}
+    <div className="min-h-screen bg-[#020617] text-white selection:bg-emerald-500/30 font-sans pb-20">
+      
+      {/* Top Navigation Bar */}
+      <nav className="sticky top-0 z-50 bg-[#020617]/80 backdrop-blur-md border-b border-slate-800 mb-8">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          
+          <div className="flex items-center gap-3">
+            <div className="bg-emerald-500/10 p-2 rounded-xl border border-emerald-500/20">
+              <Activity className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tighter uppercase italic bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                LiveScore Pro
+              </h1>
+              <p className="text-xs text-slate-500 font-medium tracking-widest uppercase">
+                Real-Time Data Feed
+              </p>
+            </div>
           </div>
-          {lastUpdated && (
-            <p className="text-xs text-slate-600">
-              Updated {lastUpdated.toLocaleTimeString()}
-            </p>
-          )}
+
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${isConnected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
+            <Radio className={`w-4 h-4 ${isConnected ? 'text-emerald-500 animate-pulse' : 'text-rose-500'}`} />
+            <span className={`text-xs font-bold tracking-widest ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {isConnected ? 'LIVE FEED ACTIVE' : 'RECONNECTING...'}
+            </span>
+          </div>
+
         </div>
-      </header>
+      </nav>
 
-      {/* Game Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-        {loading || gameList.length === 0 ? (
-          <EmptyState loading={loading} />
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6">
+        
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-2 h-6 bg-emerald-500 rounded-full" />
+          <h2 className="text-xl font-bold tracking-tight">Active Matches</h2>
+          <span className="ml-2 text-sm font-semibold text-slate-500 bg-slate-800 px-3 py-1 rounded-full">
+            {liveGameIds.length}
+          </span>
+        </div>
+
+        {/* Dynamic Grid */}
+        {liveGameIds.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {liveGameIds.map((id) => (
+              <GameCard key={id} gameId={id} />
+            ))}
+          </div>
         ) : (
-          gameList.map((game) => <GameCard key={game.gameId} game={game} />)
+          <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/20">
+            <Clock className="w-12 h-12 text-slate-600 mb-4 animate-pulse" />
+            <h3 className="text-2xl font-bold text-slate-400 mb-2">Awaiting Live Matches</h3>
+            <p className="text-slate-600 text-center max-w-md">
+              Our servers are currently polling the Sofascore API. If games are active right now, they will appear here shortly.
+            </p>
+          </div>
         )}
-      </div>
+      </main>
 
-      {/* Footer */}
-      <footer className="mt-12 text-center text-slate-700 text-xs">
-        Data refreshes every 60 seconds · WebSocket updates in real-time
-      </footer>
     </div>
   );
 }
+
+export default App;
