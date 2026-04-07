@@ -1,36 +1,24 @@
-import { fetchFromSofascore } from './sofascore.service';
+import fetch from 'node-fetch';
 
-/**
- * Global search for teams, players, and tournaments
- */
-export const search = async (term: string) => {
-  return await fetchFromSofascore('/search', { q: term });
-};
+export const fetchFromSofascore = async (endpoint: string, queryParams: Record<string, any> = {}) => {
+  // Convert { managerId: '123' } to "?managerId=123"
+  const queryString = new URLSearchParams(queryParams).toString();
+  const url = `https://${process.env.RAPIDAPI_HOST}${endpoint}${queryString ? `?${queryString}` : ''}`;
 
-/**
- * Get list of all sports categories
- */
-export const getCategoriesList = async () => {
-  return await fetchFromSofascore('/categories/list');
-};
+  console.log(`[Sofascore API] Fetching: ${url}`);
 
-/**
- * Get list of categories that currently have live events
- */
-export const getCategoriesListLive = async () => {
-  return await fetchFromSofascore('/categories/list-live');
-};
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-rapidapi-host': process.env.RAPIDAPI_HOST as string,
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY as string,
+      'Content-Type': 'application/json'
+    }
+  });
 
-/**
- * Get all supported sports (Football, Basketball, Tennis, etc.)
- */
-export const getSportsList = async () => {
-  return await fetchFromSofascore('/sports/list');
-};
+  if (!response.ok) {
+    throw new Error(`Sofascore API error: ${response.statusText} (${response.status})`);
+  }
 
-/**
- * Deprecated: Auto-complete for search
- */
-export const getAutoComplete = async (term: string) => {
-  return await fetchFromSofascore('/auto-complete', { q: term });
+  return await response.json();
 };

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import * as generalService from '../services/general.service';
+// 1. We must import the service to use it below
+// Ensure the file actually exists at: src/services/general.service.ts
+import * as generalService from '../services/general.service'; 
 
 export const search = async (req: Request, res: Response) => {
   try {
