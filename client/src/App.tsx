@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useSportsStore } from './store/useSportsStore';
 import { useWebSocket } from './hooks/useWebSocket';
 
@@ -86,7 +86,8 @@ function App() {
   const liveGameIds = Object.keys(games);
   const [, setTick] = useState(0);
 
-  useWebSocket(['ALL']);
+  const globalSub = useMemo(() => ['ALL'], []);
+  useWebSocket(globalSub);
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(t);

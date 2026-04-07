@@ -1,34 +1,39 @@
 import { WebSocket } from 'ws';
 import { ClientMessage } from '../types/ticker';
+import { currentGames } from '../services/realSportsStream'; 
 
-// UPGRADE 1: Extend the standard WebSocket to include an "isAlive" flag.
-// This is critical for the server to know if a user closed their laptop without officially disconnecting.
 export interface ExtWebSocket extends WebSocket {
   isAlive: boolean;
 }
 
-// Tracks which client is subscribed to which games
 export const clientSubscriptions = new Map<ExtWebSocket | WebSocket, Set<string>>();
 
 export function handleClientMessage(ws: ExtWebSocket | WebSocket, message: string) {
   try {
-    // SPORTS UPGRADE: Cast parsed message to ClientMessage to enforce type safety
     const parsed: ClientMessage = JSON.parse(message);
     const { action, gameId } = parsed;
 
-    // Ensure the client has a Set in our map
     if (!clientSubscriptions.has(ws)) {
       clientSubscriptions.set(ws, new Set());
     }
-
     const subs = clientSubscriptions.get(ws)!;
 
     switch (action) {
       case 'subscribe':
-        // SPORTS UPGRADE: Check for gameId instead of symbol
-        if (gameId) {
-          subs.add(gameId.toUpperCase());
-          console.log(`Client subscribed to ${gameId}`);
+        const idToSub = gameId ? gameId.toUpperCase() : 'ALL';
+        subs.add(idToSub);
+        console.log(`Client subscribed to: ${idToSub}`);
+
+        // Blast the current live games immediately so the UI doesn't have a blank screen
+        if (idToSub === 'ALL') {
+          currentGames.forEach((game) => {
+            ws.send(JSON.stringify({ type: 'TICK', data: game }));
+          });
+        } else {
+          const specificGame = currentGames.get(idToSub);
+          if (specificGame) {
+            ws.send(JSON.stringify({ type: 'TICK', data: specificGame }));
+          }
         }
         break;
 
@@ -47,7 +52,6 @@ export function handleClientMessage(ws: ExtWebSocket | WebSocket, message: strin
   }
 }
 
-// Cleanup function to prevent memory leaks when a user closes their browser tab
 export function removeClient(ws: ExtWebSocket | WebSocket) {
   clientSubscriptions.delete(ws);
 }
