@@ -1,6 +1,6 @@
 import http from 'http';
 import app from './app';
-import { config } from './config';
+import { config } from './config/index';
 import { initSocketServer } from './socket/socketManager';
 import { startExternalStream } from './services/realSportsStream';
 import { startAlertEngine } from './services/alertEngine';
@@ -16,6 +16,7 @@ server.listen(config.port, () => {
   console.log(`🚀 REST API active on http://localhost:${config.port}`);
   console.log(`📡 WebSockets active on ws://localhost:${config.port}`);
   console.log(`🛡️  Alert Engine running in the background`);
+  console.log(`🔄 Polling ${config.sportsToPoll.join(', ')} every ${config.pollInterval / 1000}s`);
   console.log(`-----------------------------------------`);
 });
 

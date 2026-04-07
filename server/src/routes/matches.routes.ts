@@ -1,31 +1,40 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import * as matchController from '../controllers/match.controller';
 
 const router = Router();
 
-const placeholderHandler = (req: Request, res: Response) => {
-  res.json({ message: `Matches domain: ${req.path}` });
-};
+// Basic Detail
+router.get('/:id/detail', matchController.getDetail);
 
-router.get('/detail', placeholderHandler);
-router.get('/get-ai-insights', placeholderHandler);
-router.get('/get-lineups', placeholderHandler);
-router.get('/get-comments', placeholderHandler);
-router.get('/get-incidents', placeholderHandler);
-router.get('/get-managers', placeholderHandler);
-router.get('/get-votes', placeholderHandler);
-router.get('/get-graph', placeholderHandler);
-router.get('/get-statistics', placeholderHandler);
-router.get('/get-team-streaks', placeholderHandler);
-router.get('/get-best-players', placeholderHandler);
-router.get('/get-media', placeholderHandler);
-router.get('/get-tweets', placeholderHandler);
-router.get('/get-esport-games', placeholderHandler);
-router.get('/get-player-statistics', placeholderHandler);
-router.get('/get-player-heatmap', placeholderHandler);
-router.get('/get-all-odds', placeholderHandler);
-router.get('/get-featured-odds', placeholderHandler);
-router.get('/get-h2h-events', placeholderHandler);
-router.get('/get-h2h', placeholderHandler);
-router.get('/get-head2head', placeholderHandler); // Deprecated
+// Insights & Social
+router.get('/:id/ai-insights', matchController.getAiInsights);
+router.get('/:id/comments', matchController.getComments);
+router.get('/:id/tweets', matchController.getTweets);
+router.get('/:id/media', matchController.getMedia);
+
+// Match Data
+router.get('/:id/lineups', matchController.getLineups);
+router.get('/:id/incidents', matchController.getIncidents);
+router.get('/:id/statistics', matchController.getStatistics);
+router.get('/:id/graph', matchController.getGraph);
+router.get('/:id/votes', matchController.getVotes);
+router.get('/:id/managers', matchController.getManagers);
+router.get('/:id/team-streaks', matchController.getTeamStreaks);
+router.get('/:id/best-players', matchController.getBestPlayers);
+
+// Player Specific (Needs Player ID)
+router.get('/:id/player/:playerId/statistics', matchController.getPlayerStatistics);
+router.get('/:id/player/:playerId/heatmap', matchController.getPlayerHeatmap);
+
+// Odds
+router.get('/:id/odds/all', matchController.getAllOdds);
+router.get('/:id/odds/featured', matchController.getFeaturedOdds);
+
+// H2H
+router.get('/:id/h2h-events', matchController.getH2HEvents);
+router.get('/:id/h2h', matchController.getH2H);
+
+// Esport
+router.get('/:id/esport-games', matchController.getEsportGames);
 
 export default router;

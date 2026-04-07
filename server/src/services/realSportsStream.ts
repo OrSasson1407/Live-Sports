@@ -1,15 +1,10 @@
 import { EventEmitter } from 'events';
 import { GameTick } from '../types/ticker';
-import { config } from '../config';
+import { config } from '../config/index';
 
 export const streamEvents = new EventEmitter();
-
-// In-memory store of current game states so we can serve them via REST
 export const currentGames: Map<string, GameTick> = new Map();
 
-/* =========================
-   ✅ TYPES
-========================= */
 type SofascoreEvent = {
   id: number;
   status?: {
@@ -35,40 +30,35 @@ type SofascoreResponse = {
   events?: SofascoreEvent[];
 };
 
-/* =========================
-   🚀 MAIN STREAM
-========================= */
-
 export function startExternalStream() {
   console.log(`📡 Sofascore Engine: Online & Polling Live Events...`);
-
-  // We want to fetch both sports
-  const sportsToFetch = ['football', 'basketball'];
+  console.log(`   Sports: ${config.sportsToPoll.join(', ')}`);
+  console.log(`   Interval: ${config.pollInterval / 1000}s`);
 
   const fetchLiveGames = async () => {
-    try {
-      // We will loop through the array of sports and hit the endpoint for each one
-      for (const sport of sportsToFetch) {
-        
+    for (const sport of config.sportsToPoll) {
+      try {
         const response = await fetch(
-          `https://sofascore.p.rapidapi.com/tournaments/get-live-events?sport=${sport}`,
+          `https://${config.rapidApiHost}/tournaments/get-live-events?sport=${sport}`,
           {
             headers: {
               'x-rapidapi-key': config.rapidApiKey,
-              'x-rapidapi-host': 'sofascore.p.rapidapi.com',
+              'x-rapidapi-host': config.rapidApiHost,
             },
           }
         );
 
         if (!response.ok) {
           console.error(`❌ Sofascore API error for ${sport}: ${response.status}`);
-          continue; // Skip to the next sport if this one fails
+          continue;
         }
 
         const data = (await response.json()) as SofascoreResponse;
 
         if (!data.events || data.events.length === 0) {
-          console.log(`💤 No live ${sport} matches right now.`);
+          if (config.nodeEnv === 'development') {
+            console.log(`💤 No live ${sport} matches right now.`);
+          }
           continue;
         }
 
@@ -76,11 +66,11 @@ export function startExternalStream() {
 
         data.events.forEach((event) => {
           const gameId = `SOFA-${event.id}`;
+          const sportType = sport === 'football' ? 'soccer' : 'basketball';
 
-          // Map Sofascore's format to our GameTick format
           const liveTick: GameTick = {
             gameId,
-            sport: sport === 'football' ? 'soccer' : 'basketball',
+            sport: sportType,
             homeTeam: event.homeTeam?.shortName || event.homeTeam?.name || 'Home',
             awayTeam: event.awayTeam?.shortName || event.awayTeam?.name || 'Away',
             homeScore: event.homeScore?.current ?? 0,
@@ -89,23 +79,15 @@ export function startExternalStream() {
             status: event.status?.type === 'finished' ? 'finished' : 'live',
           };
 
-          // Save to our memory map
           currentGames.set(gameId, liveTick);
-
-          // Broadcast to all React clients viewing the dashboard
           streamEvents.emit('tick', liveTick);
         });
+      } catch (error) {
+        console.error(`❌ Sofascore Fetch Error for ${sport}:`, error);
       }
-
-    } catch (error) {
-      console.error('❌ Sofascore Fetch Error:', error);
     }
   };
 
-  // ⏱ Polling every 60 seconds (1 minute)
-  // 2 sports * 1 fetch every minute = 120 requests/hour while testing.
-  setInterval(fetchLiveGames, 60000);
-
-  // Run the first fetch immediately when the server boots
+  setInterval(fetchLiveGames, config.pollInterval);
   fetchLiveGames();
 }
