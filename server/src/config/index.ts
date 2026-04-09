@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
+  // FIX: Added nodeEnv to resolve the property missing error in app.ts
+  nodeEnv: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3001,
   rapidApiKey: process.env.RAPIDAPI_KEY || '',
   rapidApiHost: process.env.RAPIDAPI_HOST || 'sofascore.p.rapidapi.com',
