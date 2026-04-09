@@ -25,11 +25,15 @@ model Tournament {
 }
 
 model Team {
-  id           String  @id @default(uuid())
+  id           String    @id @default(uuid())
   name         String
   logoUrl      String?
-  homeMatches  Match[] @relation("HomeTeam")
-  awayMatches  Match[] @relation("AwayTeam")
+  
+  homeMatches  Match[]   @relation("HomeTeam")
+  awayMatches  Match[]   @relation("AwayTeam")
+  
+  // NEW: Relation to get all players in this team
+  players      Player[]
 }
 
 model Match {
@@ -52,7 +56,47 @@ model Match {
   awayTeamId   String
   awayTeam     Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
 
+  // NEW: Relation to fetch live events (goals, cards, subs) for this specific match
+  events       MatchEvent[]
+
   // 4. ADD INDEXES to prevent full-table scans
   @@index([status, startTime])
   @@index([tournamentId])
+}
+
+
+// ==========================================
+// NEW MODELS FOR 365SCORES UPGRADE
+// ==========================================
+
+model Player {
+  id           String       @id @default(uuid())
+  name         String
+  position     String       // e.g., 'Forward', 'Midfielder', 'Defender', 'Goalkeeper'
+  jerseyNumber Int?
+  
+  teamId       String
+  team         Team         @relation(fields: [teamId], references: [id])
+  
+  // Relation to track all events this player was involved in
+  events       MatchEvent[]
+  
+  // Index for faster lookups when loading a team's squad
+  @@index([teamId])
+}
+
+model MatchEvent {
+  id        String   @id @default(uuid())
+  type      String   // e.g., 'GOAL', 'YELLOW_CARD', 'RED_CARD', 'SUBSTITUTION'
+  minute    Int
+  
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id])
+  
+  // Indexes for faster lookups when opening a specific match view
+  @@index([matchId])
+  @@index([playerId])
 }
