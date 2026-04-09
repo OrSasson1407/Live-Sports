@@ -1,6 +1,31 @@
-// client/src/store/useSportsStore.ts
 import { create } from 'zustand';
 
+// --- NEW DEEP DIVE INTERFACES ---
+export interface MatchEvent {
+  id: string | number;
+  minute: string;
+  type: 'GOAL' | 'YELLOW_CARD' | 'RED_CARD' | 'SUBSTITUTION' | 'FOUL';
+  player: string;
+  team: string;
+  playerId?: string;
+}
+
+export interface PlayerLineup {
+  id: string;
+  name: string;
+  number: number;
+  position: string;
+  isCaptain?: boolean;
+}
+
+export interface MatchStats {
+  possession: { home: number; away: number };
+  shotsOnTarget: { home: number; away: number };
+  corners: { home: number; away: number };
+  fouls: { home: number; away: number };
+}
+
+// --- UPDATED GAMETICK INTERFACE ---
 export interface GameTick {
   gameId: string;
   sport: 'basketball' | 'soccer';
@@ -10,6 +35,12 @@ export interface GameTick {
   awayScore: number;
   clock: string;
   status: 'pregame' | 'live' | 'halftime' | 'finished';
+  
+  // Optional deep data from your backend
+  events?: MatchEvent[];
+  homeLineup?: PlayerLineup[];
+  awayLineup?: PlayerLineup[];
+  stats?: MatchStats;
 }
 
 interface SportsState {
@@ -26,7 +57,11 @@ export const useSportsStore = create<SportsState>((set) => ({
   setConnected: (status) => set({ isConnected: status }),
   updateGame: (game) =>
     set((state) => ({
-      games: { ...state.games, [game.gameId]: game },
+      // Merges existing deep data if the websocket only sends a partial tick
+      games: { 
+        ...state.games, 
+        [game.gameId]: { ...state.games[game.gameId], ...game } 
+      },
     })),
   setGames: (games) =>
     set({
