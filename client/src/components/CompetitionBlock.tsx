@@ -11,44 +11,64 @@ interface CompetitionBlockProps {
 
 export function CompetitionBlock({ competitionName, matches }: CompetitionBlockProps) {
   const { isFavourite, toggleFavourite } = useFavourites();
+  const liveCount = matches.filter(m => m.status === 'live').length;
 
   return (
-    <div
-      className="sf-card overflow-hidden"
-      style={{ marginBottom: '8px' }}
-    >
-      {/* ── Competition header ──────────────────────────── */}
+    <div className="sf-card animate-slide-in" style={{ marginBottom: '10px' }}>
+      {/* Header */}
       <div
-        className="comp-header flex items-center justify-between px-3"
-        style={{ height: '36px' }}
+        className="comp-header flex items-center justify-between"
+        style={{ height: '38px', paddingLeft: '14px', paddingRight: '10px' }}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          {/* Country flag placeholder */}
-          <div
-            className="w-4 h-4 rounded-sm shrink-0"
-            style={{ background: 'hsl(var(--surface-3))' }}
-          />
-          <span
-            className="text-xs font-semibold truncate"
-            style={{ color: 'hsl(var(--foreground))' }}
-          >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          {/* Flag/icon placeholder */}
+          <div style={{
+            width: '18px', height: '18px',
+            borderRadius: '3px',
+            background: 'hsl(var(--surface-3))',
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontSize: '12px',
+            fontWeight: 700,
+            letterSpacing: '-0.01em',
+            color: 'hsl(var(--foreground))',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
             {competitionName}
           </span>
+          {liveCount > 0 && (
+            <span className="live-pill">{liveCount} live</span>
+          )}
         </div>
 
         <button
-          className="flex items-center gap-0.5 shrink-0 transition-colors"
-          style={{ color: 'hsl(var(--muted-foreground))', fontSize: '11px', fontWeight: 500 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            color: 'hsl(var(--muted))',
+            fontSize: '11px',
+            fontWeight: 600,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'color 0.12s',
+            letterSpacing: '0.01em',
+          }}
           onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--primary))')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted))')}
         >
-          More <ChevronRight size={11} />
+          More <ChevronRight size={12} strokeWidth={2.5} />
         </button>
       </div>
 
-      {/* ── Match rows ──────────────────────────────────── */}
+      {/* Rows */}
       <div>
-        {matches.map((match) => (
+        {matches.map((match, i) => (
           <MatchRow
             key={match.gameId}
             match={match}

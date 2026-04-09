@@ -26,7 +26,7 @@ export interface MatchStats {
 
 export interface GameTick {
   gameId: string;
-  sport: 'basketball' | 'soccer';
+  sport: 'soccer' | 'basketball' | 'tennis' | 'hockey' | 'baseball' | 'american-football' | 'rugby' | 'volleyball' | 'handball' | string;
   competition: string;          // e.g. "UEFA Europa League, Knockout stage"
   homeTeam: string;
   awayTeam: string;

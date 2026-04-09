@@ -12,7 +12,7 @@ type SofascoreEvent = {
   awayTeam?: { name?: string; shortName?: string };
   homeScore?: { current?: number };
   awayScore?: { current?: number };
-  tournament?: { sport?: { name?: string } };
+  tournament?: { name?: string; sport?: { name?: string } };
 };
 type SofascoreResponse = { events?: SofascoreEvent[] };
 type SofascoreIncident = { incidentType?: string; time?: number; player?: { name?: string } };
@@ -87,7 +87,7 @@ export class LiveFeedEngine {
     const mockGames: GameTick[] = [
       {
         gameId: `MOCK-1`,
-        sport: sport === 'football' ? 'soccer' : 'basketball',
+        sport: sport === 'football' ? 'soccer' : sport,
         homeTeam: 'Demo FC',
         awayTeam: 'Test United',
         homeScore: 1,
@@ -97,7 +97,7 @@ export class LiveFeedEngine {
       },
       {
         gameId: `MOCK-2`,
-        sport: sport === 'football' ? 'soccer' : 'basketball',
+        sport: sport === 'football' ? 'soccer' : sport,
         homeTeam: 'City Stars',
         awayTeam: 'North End',
         homeScore: 2,
@@ -119,6 +119,11 @@ export class LiveFeedEngine {
     for (let idx = 0; idx < config.sportsToPoll.length; idx++) {
       const sport = config.sportsToPoll[idx];
       let data: SofascoreResponse | null = null;
+
+      // Delay between sports to avoid burst rate limiting
+      if (idx > 0 && config.requestDelayMs > 0) {
+        await new Promise(r => setTimeout(r, config.requestDelayMs));
+      }
 
       // Try real API
       const url = `https://${config.rapidApiHost}/tournaments/get-live-events?sport=${sport}`;
@@ -157,11 +162,24 @@ export class LiveFeedEngine {
 
       for (const event of data.events) {
         const gameId = `SOFA-${event.id}`;
-        const sportType = sport === 'football' ? 'soccer' : 'basketball';
+        const sportTypeMap: Record<string, string> = {
+          'football': 'soccer',
+          'basketball': 'basketball',
+          'tennis': 'tennis',
+          'hockey': 'hockey',
+          'baseball': 'baseball',
+          'american-football': 'american-football',
+          'rugby': 'rugby',
+          'volleyball': 'volleyball',
+          'handball': 'handball'
+        };
+        const sportType = sportTypeMap[sport] ?? sport;
+        const competition = event.tournament?.name || event.tournament?.sport?.name || sport;
 
         const liveTick: GameTick = {
           gameId,
           sport: sportType,
+          competition,
           homeTeam: event.homeTeam?.shortName || event.homeTeam?.name || 'Home',
           awayTeam: event.awayTeam?.shortName || event.awayTeam?.name || 'Away',
           homeScore: event.homeScore?.current ?? 0,

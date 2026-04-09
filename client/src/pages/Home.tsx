@@ -3,6 +3,7 @@ import { useSportsStore } from '../store/useSportsStore';
 import { useFavourites } from '../hooks/useFavourites';
 import { CompetitionBlock } from '../components/CompetitionBlock';
 import Competitions from './Competitions';
+import { Activity, Star, Trophy, LayoutGrid } from 'lucide-react';
 
 type Tab = 'all' | 'live' | 'favourites' | 'competitions';
 
@@ -28,80 +29,60 @@ export default function Home() {
 
   const liveCount = allMatches.filter((m) => m.status === 'live').length;
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'live', label: 'Live' },
-    { key: 'favourites', label: 'Favourites' },
-    { key: 'competitions', label: 'Competitions' },
+  const tabs: { key: Tab; label: string; icon: any }[] = [
+    { key: 'all',          label: 'All',          icon: LayoutGrid },
+    { key: 'live',         label: 'Live',         icon: Activity   },
+    { key: 'favourites',   label: 'Favourites',   icon: Star       },
+    { key: 'competitions', label: 'Competitions', icon: Trophy     },
   ];
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
 
-      {/* ── Tab bar ──────────────────────────────────────── */}
-      <div
-        className="sticky z-20 flex"
-        style={{
-          top: '48px',           /* sits just below the 48px header */
-          background: 'hsl(var(--background))',
-          borderBottom: '1px solid hsl(var(--border))',
-          marginBottom: '12px',
-        }}
-      >
-        {tabs.map(({ key, label }) => {
+      {/* ── Tab bar ─────────────────────────────────── */}
+      <div style={{
+        position: 'sticky',
+        top: '52px',
+        zIndex: 20,
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        background: 'hsl(var(--background))',
+        borderBottom: '1px solid hsl(var(--border))',
+        marginBottom: '14px',
+      }}>
+        {tabs.map(({ key, label, icon: Icon }) => {
           const isActive = activeTab === key;
           return (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className="relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors"
+              className={`tab-item ${isActive ? 'active' : ''}`}
               style={{
-                color: isActive ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: '6px',
+                flexShrink: 0,
               }}
             >
+              <Icon size={13} strokeWidth={isActive ? 2.5 : 2} />
               {label}
               {key === 'live' && liveCount > 0 && (
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    color: '#fff',
-                    background: '#e03434',
-                    padding: '1px 5px',
-                    borderRadius: '10px',
-                    lineHeight: '16px',
-                  }}
-                >
-                  {liveCount}
-                </span>
-              )}
-              {isActive && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '2px',
-                    background: 'hsl(var(--primary))',
-                    borderRadius: '1px 1px 0 0',
-                  }}
-                />
+                <span className="live-pill">{liveCount}</span>
               )}
             </button>
           );
         })}
       </div>
 
-      {/* ── Content ──────────────────────────────────────── */}
+      {/* ── Content ─────────────────────────────────── */}
       {activeTab === 'competitions' ? (
         <Competitions />
       ) : (
-        <div>
+        <div className="stagger-list">
           {Object.entries(grouped).map(([competition, matches]) => (
             <CompetitionBlock
               key={competition}
@@ -111,16 +92,30 @@ export default function Home() {
           ))}
 
           {filtered.length === 0 && (
-            <div
-              className="text-center py-16"
-              style={{
-                color: 'hsl(var(--muted-foreground))',
-                fontSize: '14px',
-              }}
-            >
-              {activeTab === 'favourites'
-                ? 'No favourites yet. Star a match to follow it here.'
-                : 'No matches found.'}
+            <div className="empty-state animate-fade-in">
+              <div style={{
+                width: '48px', height: '48px',
+                borderRadius: '12px',
+                background: 'hsl(var(--surface-1))',
+                border: '1px solid hsl(var(--border))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '8px',
+              }}>
+                {activeTab === 'favourites'
+                  ? <Star size={20} style={{ color: 'hsl(var(--muted))' }} />
+                  : <Activity size={20} style={{ color: 'hsl(var(--muted))' }} />
+                }
+              </div>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: 'hsl(var(--foreground-2))', letterSpacing: '-0.01em' }}>
+                {activeTab === 'favourites' ? 'No favourites yet' : 'No matches found'}
+              </p>
+              <p style={{ fontSize: '12.5px', color: 'hsl(var(--muted))', marginTop: '2px' }}>
+                {activeTab === 'favourites'
+                  ? 'Star a match to follow it here.'
+                  : 'Check back soon for upcoming fixtures.'}
+              </p>
             </div>
           )}
         </div>

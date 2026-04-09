@@ -3,7 +3,7 @@
 // The new sports tick replacing the old crypto tick
 export interface GameTick {
   gameId: string;
-  sport: 'basketball' | 'soccer';
+  sport: 'soccer' | 'basketball' | 'tennis' | 'hockey' | 'baseball' | 'american-football' | 'rugby' | 'volleyball' | 'handball' | string;
   homeTeam: string;
   awayTeam: string;
   homeScore: number;
