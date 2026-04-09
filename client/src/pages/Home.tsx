@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useSportsStore } from '../store/useSportsStore';
 import { useFavourites } from '../hooks/useFavourites';
 import { MatchCard } from '../components/MatchCard';
-import { ChevronRight } from 'lucide-react';
 
 type Tab = 'all' | 'live' | 'favourites';
 
@@ -29,22 +28,23 @@ export default function Home() {
   const liveCount = allMatches.filter((m) => m.status === 'live').length;
 
   return (
-    <div className="animate-fade-in">
+    <div className="px-2">
+
       {/* Tabs */}
-      <div className="flex gap-6 border-b border-border mb-5">
+      <div className="flex gap-4 border-b border-border mb-3 sticky top-0 bg-background z-20">
         {(['all', 'live', 'favourites'] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`pb-2 text-sm font-medium transition-colors relative ${
+            className={`pb-2 text-sm font-semibold transition ${
               activeTab === tab
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-white'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab.toUpperCase()}
             {tab === 'live' && liveCount > 0 && (
-              <span className="ml-1.5 text-xs bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full">
+              <span className="ml-2 text-xs bg-red-500 px-1.5 py-0.5 rounded">
                 {liveCount}
               </span>
             )}
@@ -52,15 +52,18 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Match list */}
-      <div className="space-y-5">
+      {/* Match sections */}
+      <div className="space-y-3">
         {Object.entries(grouped).map(([comp, matches]) => (
-          <div key={comp} className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-            <div className="px-4 py-2.5 bg-secondary/30 border-b border-border flex items-center justify-between">
-              <span className="text-sm font-semibold">{comp}</span>
-              <ChevronRight size={16} className="text-muted-foreground" />
+          <div key={comp} className="card-glass rounded-lg overflow-hidden">
+
+            {/* Header */}
+            <div className="px-4 py-2 text-[11px] font-bold tracking-wider text-muted-foreground bg-gradient-to-r from-white/5 to-transparent">
+              {comp}
             </div>
-            <div className="divide-y divide-border">
+
+            {/* Matches */}
+            <div className="divide-y divide-border/60">
               {matches.map((match) => (
                 <MatchCard
                   key={match.gameId}
@@ -70,16 +73,11 @@ export default function Home() {
                 />
               ))}
             </div>
+
           </div>
         ))}
-
-        {Object.keys(grouped).length === 0 && (
-          <div className="text-center py-16 text-muted-foreground bg-card rounded-xl border border-border">
-            <p className="text-lg font-medium mb-1">No matches found</p>
-            <p className="text-sm">Try changing the filter</p>
-          </div>
-        )}
       </div>
+
     </div>
   );
 }
