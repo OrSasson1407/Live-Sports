@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-// --- NEW DEEP DIVE INTERFACES ---
 export interface MatchEvent {
   id: string | number;
   minute: string;
@@ -25,18 +24,16 @@ export interface MatchStats {
   fouls: { home: number; away: number };
 }
 
-// --- UPDATED GAMETICK INTERFACE ---
 export interface GameTick {
   gameId: string;
   sport: 'basketball' | 'soccer';
+  competition: string;          // e.g. "UEFA Europa League, Knockout stage"
   homeTeam: string;
   awayTeam: string;
   homeScore: number;
   awayScore: number;
-  clock: string;
+  clock: string;                // "19:30", "45'", "FT", etc.
   status: 'pregame' | 'live' | 'halftime' | 'finished';
-  
-  // Optional deep data from your backend
   events?: MatchEvent[];
   homeLineup?: PlayerLineup[];
   awayLineup?: PlayerLineup[];
@@ -57,14 +54,8 @@ export const useSportsStore = create<SportsState>((set) => ({
   setConnected: (status) => set({ isConnected: status }),
   updateGame: (game) =>
     set((state) => ({
-      // Merges existing deep data if the websocket only sends a partial tick
-      games: { 
-        ...state.games, 
-        [game.gameId]: { ...state.games[game.gameId], ...game } 
-      },
+      games: { ...state.games, [game.gameId]: { ...state.games[game.gameId], ...game } },
     })),
   setGames: (games) =>
-    set({
-      games: Object.fromEntries(games.map((g) => [g.gameId, g])),
-    }),
+    set({ games: Object.fromEntries(games.map((g) => [g.gameId, g])) }),
 }));

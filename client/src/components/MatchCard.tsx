@@ -1,9 +1,9 @@
+// components/MatchCard.tsx - Premium Redesign
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSportsStore } from '../store/useSportsStore';
-import { Activity } from 'lucide-react';
+import { Star, Activity, Clock } from 'lucide-react';
 
-// Upgraded Helper component for the flashing score effect
 function ScoreDisplay({ score, isLive }: { score: number; isLive: boolean }) {
   const [flash, setFlash] = useState(false);
   const prevScore = useRef(score);
@@ -11,25 +11,26 @@ function ScoreDisplay({ score, isLive }: { score: number; isLive: boolean }) {
   useEffect(() => {
     if (score !== prevScore.current) {
       setFlash(true);
-      const timer = setTimeout(() => setFlash(false), 1000);
+      const timer = setTimeout(() => setFlash(false), 400);
       prevScore.current = score;
       return () => clearTimeout(timer);
     }
   }, [score]);
 
   return (
-    <div className={`text-2xl font-black tabular-nums transition-all duration-300 ${flash ? 'text-blue-500 scale-125 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'text-white'}`}>
+    <div className={`text-xl font-black tabular-nums transition-all duration-300 ${
+      flash ? 'text-blue-400 scale-110' : 'text-white'
+    }`}>
       {score}
     </div>
   );
 }
 
-// Visual indicator showing which team has attacking momentum
-function MomentumIndicator({ homeAdvantage }: { homeAdvantage: boolean }) {
+function MomentumBar({ homeAdvantage }: { homeAdvantage: boolean }) {
   return (
-    <div className="flex items-center gap-1 h-1 w-full mt-2 bg-gray-800/50 rounded-full overflow-hidden">
-      <div className={`h-full bg-blue-500 transition-all duration-1000 ${homeAdvantage ? 'w-3/4' : 'w-1/4'}`} />
-      <div className={`h-full bg-red-500 transition-all duration-1000 ${homeAdvantage ? 'w-1/4' : 'w-3/4'}`} />
+    <div className="flex gap-0.5 h-1 w-full mt-3 bg-white/5 rounded-full overflow-hidden">
+      <div className={`h-full bg-blue-500 transition-all duration-700 ${homeAdvantage ? 'w-2/3' : 'w-1/3'}`} />
+      <div className={`h-full bg-red-500 transition-all duration-700 ${homeAdvantage ? 'w-1/3' : 'w-2/3'}`} />
     </div>
   );
 }
@@ -41,84 +42,79 @@ export default function MatchCard({ gameId }: { gameId: string }) {
   
   if (!game) return null;
 
+  const isLive = game.status === 'live';
   const isFinished = game.status === 'finished';
   const isHalftime = game.status === 'halftime';
-  const isLive = !isFinished && !isHalftime && game.status === 'live';
   
-  const statusLabel = isFinished ? 'FT' : isHalftime ? 'HT' : game.clock;
-
-  // Derive sport icon based on your store's sport property
+  const statusText = isFinished ? 'FT' : isHalftime ? 'HT' : game.clock;
   const sportIcon = game.sport === 'basketball' ? '🏀' : '⚽';
+  const sportColor = game.sport === 'basketball' ? 'from-orange-500/20 to-transparent' : 'from-green-500/20 to-transparent';
 
   return (
     <div 
       onClick={() => navigate(`/match/${gameId}`)}
-      className="group relative bg-gray-900 border border-gray-800 hover:border-blue-500/50 rounded-2xl p-4 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden"
+      className="group relative bg-[#1a1c23] border border-white/5 rounded-xl cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-white/10 overflow-hidden"
     >
-      {/* Subtle Background Gradient Highlight on Hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      {/* Hover Gradient */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${sportColor} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
 
-      {/* Header Info */}
-      <div className="flex justify-between items-center mb-4 text-xs font-semibold text-gray-400">
-        <div className="flex items-center gap-2">
-          <span>{sportIcon}</span>
-          <span className={`px-2 py-0.5 rounded-md ${isLive ? 'bg-red-500/10 text-red-500' : 'bg-gray-800'}`}>
-            {statusLabel}
-            {isLive && <span className="inline-block ml-1.5 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-          </span>
+      <div className="relative p-4">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{sportIcon}</span>
+            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              isLive ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-gray-400'
+            }`}>
+              {isLive && <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />}
+              <span>{statusText}</span>
+            </div>
+          </div>
+          
+          <button 
+            onClick={(e) => { e.stopPropagation(); setIsFavorite(!isFavorite); }}
+            className={`p-1 rounded-lg transition-colors ${isFavorite ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400'}`}
+          >
+            <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
         </div>
-        
-        <button 
-          aria-label="Favorite match"
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            setIsFavorite(!isFavorite); 
-          }}
-          className={`transition-colors z-10 ${isFavorite ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-400'}`}
-        >
-          <svg viewBox="0 0 24 24" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" width="18" height="18">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
-        </button>
+
+        {/* Teams & Scores */}
+        <div className="space-y-2.5">
+          {/* Home Team */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2.5 flex-1">
+              <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-gray-400">
+                {game.homeTeam.charAt(0)}
+              </div>
+              <span className="text-sm font-medium truncate flex-1">{game.homeTeam}</span>
+            </div>
+            <ScoreDisplay score={game.homeScore} isLive={isLive} />
+          </div>
+
+          {/* Away Team */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2.5 flex-1">
+              <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-gray-400">
+                {game.awayTeam.charAt(0)}
+              </div>
+              <span className="text-sm font-medium truncate flex-1">{game.awayTeam}</span>
+            </div>
+            <ScoreDisplay score={game.awayScore} isLive={isLive} />
+          </div>
+        </div>
+
+        {/* Live Momentum */}
+        {isLive && (
+          <div className="mt-3 pt-2 border-t border-white/5">
+            <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+              <span>Attack Momentum</span>
+              <Activity size={10} className="text-blue-400" />
+            </div>
+            <MomentumBar homeAdvantage={game.homeScore >= game.awayScore} />
+          </div>
+        )}
       </div>
-      
-      {/* Teams & Scores */}
-      <div className="space-y-3 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-             <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 text-xs font-bold text-gray-400">
-               {game.homeTeam.charAt(0)}
-             </div>
-            <span className={`text-base truncate max-w-[120px] sm:max-w-none ${game.homeScore >= game.awayScore ? 'font-bold text-white' : 'font-medium text-gray-300'}`}>
-              {game.homeTeam}
-            </span>
-          </div>
-          <ScoreDisplay score={game.homeScore} isLive={isLive} />
-        </div>
-
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-             <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700 text-xs font-bold text-gray-400">
-               {game.awayTeam.charAt(0)}
-             </div>
-            <span className={`text-base truncate max-w-[120px] sm:max-w-none ${game.awayScore >= game.homeScore ? 'font-bold text-white' : 'font-medium text-gray-300'}`}>
-              {game.awayTeam}
-            </span>
-          </div>
-          <ScoreDisplay score={game.awayScore} isLive={isLive} />
-        </div>
-      </div>
-
-      {/* Live Momentum Bar (Only shows if the game is live) */}
-      {isLive && (
-        <div className="mt-4 pt-3 border-t border-gray-800/50">
-          <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-            <span>Attacking Momentum</span>
-            <Activity size={12} className="text-blue-400" />
-          </div>
-          <MomentumIndicator homeAdvantage={game.homeScore >= game.awayScore} />
-        </div>
-      )}
     </div>
   );
 }
