@@ -1,54 +1,50 @@
 import { useState } from 'react';
 import { useSportsStore } from '../store/useSportsStore';
-import CompetitionBlock from '../components/CompetitionBlock';
+import { useFavourites } from '../hooks/useFavourites';
+import { MatchCard } from '../components/MatchCard';
+import { ChevronRight } from 'lucide-react';
 
-type Tab = 'all' | 'live' | 'favourites' | 'competitions' | 'today' | 'odds';
+type Tab = 'all' | 'live' | 'favourites';
 
 export default function Home() {
   const games = useSportsStore((state) => state.games);
+  const { isFavourite, toggleFavourite } = useFavourites();
   const [activeTab, setActiveTab] = useState<Tab>('all');
 
-  // Convert games object to array and filter by tab
   const allMatches = Object.values(games);
 
-  const filterMatches = () => {
-    if (activeTab === 'live') {
-      return allMatches.filter((g) => g.status === 'live');
-    }
-    // For demo, 'all', 'today', etc. show everything
-    // In real app, 'today' would filter by date
-    return allMatches;
-  };
+  const filtered = allMatches.filter((match) => {
+    if (activeTab === 'live') return match.status === 'live';
+    if (activeTab === 'favourites') return isFavourite(match.gameId);
+    return true;
+  });
 
-  const filtered = filterMatches();
-
-  // Group by competition
   const grouped = filtered.reduce((acc, match) => {
-    const comp = match.competition || 'Other';
-    if (!acc[comp]) acc[comp] = [];
-    acc[comp].push(match);
+    const key = match.sport === 'soccer' ? '⚽ Football' : '🏀 Basketball';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(match);
     return acc;
   }, {} as Record<string, typeof filtered>);
 
-  const liveCount = allMatches.filter((g) => g.status === 'live').length;
+  const liveCount = allMatches.filter((m) => m.status === 'live').length;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      {/* Tabs row */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800 mb-6 overflow-x-auto">
-        {(['all', 'live', 'favourites', 'competitions', 'today', 'odds'] as Tab[]).map((tab) => (
+    <div className="animate-fade-in">
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-border mb-5">
+        {(['all', 'live', 'favourites'] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-semibold capitalize transition-all whitespace-nowrap ${
+            className={`pb-2 text-sm font-medium transition-colors relative ${
               activeTab === tab
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 -mb-px'
-                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab}
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
             {tab === 'live' && liveCount > 0 && (
-              <span className="ml-1.5 text-xs bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full">
+              <span className="ml-1.5 text-xs bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full">
                 {liveCount}
               </span>
             )}
@@ -56,15 +52,34 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Competition blocks */}
-      {Object.entries(grouped).map(([compName, matches]) => (
-        <CompetitionBlock key={compName} competitionName={compName} matches={matches} />
-      ))}
+      {/* Match list */}
+      <div className="space-y-5">
+        {Object.entries(grouped).map(([comp, matches]) => (
+          <div key={comp} className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+            <div className="px-4 py-2.5 bg-secondary/30 border-b border-border flex items-center justify-between">
+              <span className="text-sm font-semibold">{comp}</span>
+              <ChevronRight size={16} className="text-muted-foreground" />
+            </div>
+            <div className="divide-y divide-border">
+              {matches.map((match) => (
+                <MatchCard
+                  key={match.gameId}
+                  match={match}
+                  isFavourite={isFavourite(match.gameId)}
+                  onToggleFavourite={toggleFavourite}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
 
-      {/* Empty state */}
-      {Object.keys(grouped).length === 0 && (
-        <div className="text-center py-12 text-gray-500">No matches for this filter.</div>
-      )}
+        {Object.keys(grouped).length === 0 && (
+          <div className="text-center py-16 text-muted-foreground bg-card rounded-xl border border-border">
+            <p className="text-lg font-medium mb-1">No matches found</p>
+            <p className="text-sm">Try changing the filter</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
