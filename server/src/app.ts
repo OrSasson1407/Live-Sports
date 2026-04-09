@@ -1,5 +1,8 @@
+// server/src/app.ts
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
 import { config } from './config/index';
 
 // Import Routers
@@ -16,8 +19,11 @@ import stageRoutes from './routes/stages.routes';
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// Security and Performance Middleware
+app.use(helmet()); 
+app.use(compression()); 
+app.use(cors()); // You can restrict this later: cors({ origin: config.clientUrl })
+app.use(express.json({ limit: '10kb' })); 
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
@@ -52,15 +58,15 @@ app.use((req: Request, res: Response) => {
 
 // Global Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('🚨 Unhandled Express Error:', {
+  console.error(`🚨 [${req.method}] ${req.path} >> Error:`, {
     message: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method
+    ...(config.nodeEnv !== 'production' && { stack: err.stack })
   });
   
+  const isProd = config.nodeEnv === 'production';
+
   res.status(err.status || 500).json({ 
-    error: err.message || 'Internal Server Error',
+    error: isProd ? 'Internal Server Error' : (err.message || 'Internal Server Error'),
     timestamp: new Date().toISOString()
   });
 });

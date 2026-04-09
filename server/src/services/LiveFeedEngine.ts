@@ -65,7 +65,11 @@ export class LiveFeedEngine {
   private static async fetchAndProcessData() {
     let totalLiveGamesActive = 0;
 
-    for (const sport of config.sportsToPoll) {
+    // Fetch all sports CONCURRENTLY instead of sequentially
+    const fetchPromises = config.sportsToPoll.map(async (sport) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+
       try {
         const response = await fetch(
           `https://${config.rapidApiHost}/tournaments/get-live-events?sport=${sport}`,
@@ -74,13 +78,27 @@ export class LiveFeedEngine {
               'x-rapidapi-key': config.rapidApiKey,
               'x-rapidapi-host': config.rapidApiHost,
             },
+            signal: controller.signal // Prevent hanging requests
           }
         );
 
-        if (!response.ok) continue;
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
 
-        // FIX: Cast the response to our defined type
         const data = (await response.json()) as SofascoreResponse;
+        return { sport, data };
+      } catch (error) {
+        console.error(`❌ Fetch Error for ${sport}:`, error);
+        return null; // Return null so Promise.allSettled doesn't break
+      }
+    });
+
+    const results = await Promise.allSettled(fetchPromises);
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        const { sport, data } = result.value;
         
         if (!data.events || data.events.length === 0) continue;
         
@@ -118,13 +136,14 @@ export class LiveFeedEngine {
             }
           }
         }
-      } catch (error) {
-        console.error(`❌ Fetch Error for ${sport}:`, error);
       }
     }
 
     // 🔥 ADAPTIVE POLLING LOGIC 🔥
     if (totalLiveGamesActive > 0) {
+      // 👈 ADDED: Explicitly log the active game count to the terminal
+      console.log(`📡 [POLL COMPLETE] Currently tracking ${totalLiveGamesActive} active live games.`);
+
       if (!this.isHyperDrive) {
         console.log(`🏎️ Live games detected! Shifting to Hyper-Drive (${config.pollInterval / 1000}s)`);
         this.isHyperDrive = true;
@@ -154,10 +173,8 @@ export class LiveFeedEngine {
         }
       );
       
-      // FIX: Cast the response to our defined incident type
       const incidentData = (await response.json()) as SofascoreIncidentResponse;
       
-      // Find the most recent goal incident
       const latestGoal = incidentData?.incidents?.find((inc) => inc.incidentType === 'goal');
 
       if (latestGoal && latestGoal.player?.name) {
@@ -168,7 +185,6 @@ export class LiveFeedEngine {
           message: `🚨 GOAL! ${playerName} (${time}') | ${game.homeTeam} ${game.homeScore} - ${game.awayScore} ${game.awayTeam}` 
         });
       } else {
-        // Fallback if player name isn't available yet
         WebSocketService.broadcast('ALL', 'ALERT', { 
           message: `🚨 GOAL in ${game.homeTeam} vs ${game.awayTeam}! (${game.homeScore} - ${game.awayScore})` 
         });

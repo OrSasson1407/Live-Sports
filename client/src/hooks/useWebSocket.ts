@@ -1,3 +1,4 @@
+// client/src/hooks/useWebSocket.ts
 import { useEffect, useRef } from 'react';
 import { useSportsStore } from '../store/useSportsStore';
 
@@ -6,6 +7,7 @@ const WS_URL = 'ws://localhost:3001';
 export function useWebSocket(gameIdsToSubscribe: string[]) {
   const setConnected = useSportsStore((state) => state.setConnected);
   const updateGame = useSportsStore((state) => state.updateGame);
+  const setGames = useSportsStore((state) => state.setGames); // 👈 Added this to grab the sync function
 
   // Safely track the subscription list without causing re-renders
   const subsRef = useRef(gameIdsToSubscribe);
@@ -46,9 +48,15 @@ export function useWebSocket(gameIdsToSubscribe: string[]) {
         if (!isMounted) return;
         try {
           const parsed = JSON.parse(event.data);
-          if (parsed.type === 'TICK') {
+          
+          // 👈 ADDED: Handle the SYNC payload when we first connect
+          if (parsed.type === 'SYNC') {
+            setGames(parsed.data);
+          } 
+          else if (parsed.type === 'TICK') {
             updateGame(parsed.data);
-          } else if (parsed.type === 'ALERT') {
+          } 
+          else if (parsed.type === 'ALERT') {
             console.log('🚨 ALERT:', parsed.data.message);
           }
         } catch (err) {

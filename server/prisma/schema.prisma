@@ -9,6 +9,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 1. Add Enum for strict typing
+enum MatchStatus {
+  LIVE
+  FINISHED
+  NOT_STARTED
+  CANCELED
+}
+
 model Tournament {
   id        String   @id @default(uuid())
   name      String
@@ -25,18 +33,26 @@ model Team {
 }
 
 model Match {
-  id           String     @id @default(uuid())
-  status       String     // e.g., "LIVE", "FINISHED", "NOT_STARTED"
-  homeScore    Int        @default(0)
-  awayScore    Int        @default(0)
+  id           String      @id @default(uuid())
+  status       MatchStatus @default(NOT_STARTED) // 2. Use Enum
+  homeScore    Int         @default(0)
+  awayScore    Int         @default(0)
   startTime    DateTime
   
+  // 3. Add Timestamps
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
   tournamentId String
-  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id])
 
   homeTeamId   String
-  homeTeam     Team       @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  homeTeam     Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
   
   awayTeamId   String
-  awayTeam     Team       @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  awayTeam     Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  // 4. ADD INDEXES to prevent full-table scans
+  @@index([status, startTime])
+  @@index([tournamentId])
 }

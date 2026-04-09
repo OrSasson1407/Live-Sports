@@ -1,11 +1,13 @@
 // server/src/index.ts
 import http from 'http';
 import app from './app';
+import { PrismaClient } from '@prisma/client';
 import { config } from './config/index';
 import { WebSocketService } from './socket/WebSocketService';
 import { LiveFeedEngine } from './services/LiveFeedEngine';
 
 const server = http.createServer(app);
+const prisma = new PrismaClient();
 
 // Initialize the new Advanced WebSocket Pub/Sub System
 WebSocketService.init(server);
@@ -22,10 +24,19 @@ server.listen(config.port, () => {
   console.log(`=============================================\n`);
 });
 
-const shutdown = () => {
+const shutdown = async () => {
   console.log('\n🛑 Initiating graceful shutdown...');
+  
+  // 1. Stop polling
   LiveFeedEngine.stop();
+  
+  // 2. Disconnect database connections safely
+  await prisma.$disconnect();
+  console.log('📦 Database disconnected.');
+
+  // 3. Close server and websockets
   server.close(() => {
+    WebSocketService.closeAll();
     console.log('✅ HTTP and WebSocket servers closed safely.');
     process.exit(0);
   });

@@ -2,6 +2,7 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { Server } from 'http';
 import { config } from '../config/index';
+import { CacheService } from '../services/CacheService'; // 👈 Added Import
 
 // Attach an isAlive property to track dead connections and rooms for Pub/Sub
 interface ExtWebSocket extends WebSocket {
@@ -22,6 +23,10 @@ export class WebSocketService {
 
       console.log('🟢 Client connected. Total active:', this.wss.clients.size);
 
+      // 👈 ADDED: Instantly send all current games to the new client (Cold Start Fix)
+      const currentGames = CacheService.getAllGames();
+      ws.send(JSON.stringify({ type: 'SYNC', data: currentGames }));
+
       // Heartbeat response
       ws.on('pong', () => { 
         ws.isAlive = true; 
@@ -37,9 +42,11 @@ export class WebSocketService {
         }
       });
 
-      // Handle client disconnect
+      // Handle client disconnect and clean up memory
       ws.on('close', () => {
         console.log('🔴 Client disconnected. Total active:', this.wss.clients.size);
+        ws.rooms.clear(); // Free up memory immediately
+        ws.isAlive = false;
       });
     });
 
@@ -94,5 +101,15 @@ export class WebSocketService {
         }
       }
     });
+  }
+
+  /**
+   * Closes all connections gracefully during server shutdown
+   */
+  public static closeAll() {
+    if (this.wss) {
+      this.wss.clients.forEach(ws => ws.terminate());
+      this.wss.close();
+    }
   }
 }

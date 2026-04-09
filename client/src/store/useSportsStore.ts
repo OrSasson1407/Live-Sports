@@ -1,3 +1,4 @@
+// client/src/store/useSportsStore.ts
 import { create } from 'zustand';
 
 export interface GameTick {
