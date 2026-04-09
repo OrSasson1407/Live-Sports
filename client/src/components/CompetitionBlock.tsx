@@ -1,83 +1,52 @@
-import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { MatchRow } from './MatchRow';
+import { useFavourites } from '../hooks/useFavourites';
 import { GameTick } from '../store/useSportsStore';
+import { ChevronRight } from 'lucide-react';
 
-export default function CompetitionBlock({
-  competitionName,
-  matches,
-}: {
+interface CompetitionBlockProps {
   competitionName: string;
   matches: GameTick[];
-}) {
-  const navigate = useNavigate();
+  showVotePrompt?: boolean;
+}
+
+export function CompetitionBlock({ competitionName, matches, showVotePrompt = true }: CompetitionBlockProps) {
+  const { isFavourite, toggleFavourite } = useFavourites();
 
   return (
-    <div className="mb-6">
-      {/* Competition header */}
-      <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-800">
-        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+    <div className="glass-card rounded-xl overflow-hidden transition-all hover:shadow-2xl">
+      {/* Header with "More >" */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-primary/20 to-transparent border-b border-white/10">
+        <h3 className="text-xs font-black uppercase tracking-wider text-primary drop-shadow-sm">
           {competitionName}
         </h3>
-        <button className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
+        <button className="text-[11px] font-bold text-muted-foreground hover:text-primary flex items-center gap-1 transition">
           More <ChevronRight size={12} />
         </button>
       </div>
 
       {/* Match rows */}
-      <div className="divide-y divide-gray-100 dark:divide-gray-800/50">
+      <div className="divide-y divide-white/5">
         {matches.map((match) => (
-          <div
+          <MatchRow
             key={match.gameId}
-            onClick={() => navigate(`/match/${match.gameId}`)}
-            className="group grid grid-cols-12 items-center py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-          >
-            {/* Time / status column */}
-            <div className="col-span-2 text-xs font-medium">
-              {match.status === 'live' ? (
-                <span className="inline-flex items-center gap-1.5 text-red-500">
-                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                  {match.clock}
-                </span>
-              ) : (
-                <span className="text-gray-400">{match.clock || '—'}</span>
-              )}
-            </div>
-
-            {/* Home team + score */}
-            <div className="col-span-4 flex items-center justify-between pr-4">
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                {match.homeTeam}
-              </span>
-              <span className="font-mono font-bold text-gray-900 dark:text-white">
-                {match.homeScore}
-              </span>
-            </div>
-
-            {/* Away team + score */}
-            <div className="col-span-4 flex items-center justify-between pr-4">
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                {match.awayTeam}
-              </span>
-              <span className="font-mono font-bold text-gray-900 dark:text-white">
-                {match.awayScore}
-              </span>
-            </div>
-
-            {/* Vote button */}
-            <div className="col-span-2 flex justify-end">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  alert(`Vote for ${match.homeTeam} vs ${match.awayTeam}`);
-                }}
-                className="text-xs bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-full font-medium hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
-              >
-                Who will win? <span className="ml-1">🎯</span>
-              </button>
-            </div>
-          </div>
+            match={match}
+            isFavourite={isFavourite(match.gameId)}
+            onToggleFavourite={toggleFavourite}
+          />
         ))}
       </div>
+
+      {/* "Who will win? Cast your vote!" prompt at bottom of block (like SofaScore) */}
+      {showVotePrompt && matches.length > 0 && (
+        <div className="px-4 py-2 border-t border-white/10 bg-white/5 text-center">
+          <button
+            onClick={() => alert("Vote for your favourite match!")}
+            className="text-xs font-bold text-primary hover:underline flex items-center justify-center gap-1 mx-auto"
+          >
+            Who will win? Cast your vote! 🗳️
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Trophy, User, Search, Menu, X, Star } from 'lucide-react';
+import { Home, Trophy, User, Menu, X, Star, Flame } from 'lucide-react';
+import SearchBar from './SearchBar';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -15,32 +16,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border">
+      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-white/10 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center shadow-lg">
-                <span className="text-white text-xs font-black">SS</span>
+            <Link to="/" className="flex items-center gap-2 shrink-0 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+                <Flame size={16} className="text-white" />
               </div>
-              <span className="font-bold text-base hidden sm:inline bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
+              <span className="font-black text-lg bg-gradient-to-r from-white to-primary bg-clip-text text-transparent hidden sm:inline">
                 SportScore
               </span>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex flex-1 justify-center px-6">
+              <SearchBar />
+            </div>
+
+            <nav className="hidden md:flex items-center gap-2">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-all ${
                       isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                        ? 'bg-primary/20 text-primary shadow-md border border-primary/30'
+                        : 'text-muted-foreground hover:text-white hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -52,33 +54,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            {/* Right side */}
-            <div className="flex items-center gap-2">
-              <button className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary transition-colors">
-                <Search size={18} />
-              </button>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 text-muted-foreground hover:text-foreground"
-              >
-                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-            </div>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-muted-foreground hover:text-white hover:bg-white/10 rounded-lg transition"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-card p-2 animate-slide-up">
+          <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-md p-3 animate-fade-in">
+            <div className="mb-4"><SearchBar /></div>
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
-                  location.pathname === item.path
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold ${
+                  location.pathname === item.path ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-white hover:bg-white/10'
                 }`}
               >
                 <item.icon size={18} />
@@ -88,11 +82,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </header>
-
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {children}
-      </main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
     </div>
   );
 }

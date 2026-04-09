@@ -1,73 +1,103 @@
-// components/MatchRow.tsx
-import { useEffect, useRef, useState } from 'react';
+import { Star, Clock, ChevronRight, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useSportsStore } from '../store/useSportsStore';
-import { Star } from 'lucide-react';
+import { Match } from '../types';
+import { useMemo, useState, useEffect, useRef } from 'react';
 
-function AnimatedScore({ score }: { score: number }) {
+interface MatchRowProps {
+  match: Match;
+  isFavourite: boolean;
+  onToggleFavourite: (id: string) => void;
+}
+
+function ScoreDisplay({ score, previousScore }: { score: number; previousScore: number }) {
   const [flash, setFlash] = useState(false);
-  const prev = useRef(score);
+  const prevRef = useRef(previousScore);
   useEffect(() => {
-    if (score !== prev.current) {
+    if (score !== prevRef.current) {
       setFlash(true);
-      const t = setTimeout(() => setFlash(false), 300);
-      prev.current = score;
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setFlash(false), 300);
+      prevRef.current = score;
+      return () => clearTimeout(timer);
     }
   }, [score]);
   return (
-    <span className={`font-mono font-bold tabular-nums transition-all duration-200 ${flash ? 'text-blue-400 scale-105' : 'text-white'}`}>
+    <span className={`font-mono font-black text-lg tabular-nums transition-all ${flash ? 'score-flash text-primary' : 'text-white'}`}>
       {score}
     </span>
   );
 }
 
-export default function MatchRow({ gameId }: { gameId: string }) {
-  const game = useSportsStore((state) => state.games[gameId]);
+export function MatchRow({ match, isFavourite, onToggleFavourite }: MatchRowProps) {
   const navigate = useNavigate();
-  const [fav, setFav] = useState(false);
+  const [prevScores] = useState({ home: match.homeScore, away: match.awayScore });
 
-  if (!game) return null;
+  const statusDisplay = useMemo(() => {
+    if (match.status === 'live') {
+      return (
+        <div className="flex items-center gap-1.5 bg-red-500/20 px-2 py-0.5 rounded-full">
+          <span className="live-dot" />
+          <span className="text-xs font-bold text-red-500 uppercase">{match.clock || "LIVE"}</span>
+        </div>
+      );
+    }
+    if (match.status === 'finished') return <span className="text-xs font-bold text-muted-foreground bg-white/10 px-2 py-0.5 rounded-full">FT</span>;
+    // scheduled – show "2nd half", "1st half" or time
+    if (match.clock && (match.clock.includes('half') || match.clock.includes('Half'))) {
+      return <span className="text-xs font-bold text-muted-foreground bg-white/10 px-2 py-0.5 rounded-full">{match.clock}</span>;
+    }
+    return (
+      <div className="flex items-center gap-1 text-muted-foreground bg-white/10 px-2 py-0.5 rounded-full">
+        <Clock size={12} />
+        <span className="text-xs font-medium">{match.startTime || "19:00"}</span>
+      </div>
+    );
+  }, [match.status, match.clock, match.startTime]);
 
-  const isLive = game.status === 'live';
-  const statusLabel = isLive ? game.clock : game.status === 'halftime' ? 'HT' : game.status === 'finished' ? 'FT' : '';
+  const handleClick = () => navigate(`/match/${match.gameId}`);
 
   return (
     <div
-      onClick={() => navigate(`/match/${gameId}`)}
-      className="group grid grid-cols-12 items-center gap-2 px-4 py-2.5 border-b border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors"
+      className="match-row grid grid-cols-12 items-center px-4 py-3 cursor-pointer border-b border-white/5 transition-all"
+      onClick={handleClick}
     >
-      {/* Time / Status */}
-      <div className="col-span-2 text-xs font-medium">
-        {isLive ? (
-          <span className="inline-flex items-center gap-1.5 text-red-400">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            {statusLabel}
-          </span>
-        ) : (
-          <span className="text-gray-500">{statusLabel || '—'}</span>
-        )}
+      {/* Teams & scores */}
+      <div className="col-span-6 flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold truncate">{match.homeTeam}</span>
+          <ScoreDisplay score={match.homeScore} previousScore={prevScores.home} />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium truncate text-muted-foreground">{match.awayTeam}</span>
+          <ScoreDisplay score={match.awayScore} previousScore={prevScores.away} />
+        </div>
       </div>
 
-      {/* Home team */}
-      <div className="col-span-4 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium truncate">{game.homeTeam}</span>
-        <AnimatedScore score={game.homeScore} />
+      {/* Status & odds */}
+      <div className="col-span-3 flex flex-col items-center gap-1">
+        {statusDisplay}
+        {/* Odds pill like SofaScore */}
+        <div className="hidden sm:flex items-center gap-1 text-[11px] bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+          <span className="text-muted-foreground">1</span>
+          <span className="font-mono text-primary font-bold">2.10</span>
+          <span className="text-muted-foreground">X</span>
+          <span className="font-mono text-primary font-bold">3.40</span>
+          <TrendingUp size={10} className="text-green-500 ml-0.5" />
+        </div>
       </div>
 
-      {/* Away team */}
-      <div className="col-span-4 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium truncate">{game.awayTeam}</span>
-        <AnimatedScore score={game.awayScore} />
-      </div>
-
-      {/* Actions */}
-      <div className="col-span-2 flex justify-end">
+      {/* Favourite and vote button */}
+      <div className="col-span-3 flex items-center justify-end gap-2">
         <button
-          onClick={(e) => { e.stopPropagation(); setFav(!fav); }}
-          className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => { e.stopPropagation(); onToggleFavourite(match.gameId); }}
+          className="p-1.5 rounded-full hover:bg-primary/20 transition hover:scale-110"
         >
-          <Star size={14} className={fav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'} />
+          <Star size={14} className={isFavourite ? "fill-yellow-500 text-yellow-500 drop-shadow-glow" : "text-muted-foreground"} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); alert(`Vote for ${match.homeTeam} vs ${match.awayTeam}`); }}
+          className="text-[11px] font-bold bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 text-primary px-3 py-1.5 rounded-full transition shadow-md whitespace-nowrap"
+        >
+          Who will win? <span className="ml-1">🎯</span>
         </button>
       </div>
     </div>
