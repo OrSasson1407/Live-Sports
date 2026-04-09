@@ -1,11 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Heart, Activity, Calendar, User as UserIcon } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function PlayerView() {
   const { playerId } = useParams();
   const navigate = useNavigate();
 
-  // Enhanced mock data
   const player = {
     id: playerId,
     name: 'Lionel Messi',
@@ -16,6 +15,7 @@ export default function PlayerView() {
     age: 36,
     height: '170 cm',
     weight: '72 kg',
+    foot: 'Left',
     stats: {
       appearances: 15,
       goals: 12,
@@ -24,83 +24,198 @@ export default function PlayerView() {
       minutes: 1250,
       shots: 45,
       passes: 890,
+      yellowCards: 1,
+      redCards: 0,
     },
-    bio: 'Seven-time Ballon d\'Or winner. Considered one of the greatest footballers of all time.',
+    bio: "Seven-time Ballon d'Or winner. Considered one of the greatest footballers of all time.",
   };
 
+  const ratingColor = (r: number) =>
+    r >= 8 ? '#4ade80' : r >= 6.5 ? '#fcca22' : '#e03434';
+
   return (
-    <div className="animate-fade-in max-w-3xl mx-auto">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-5">
-        <ArrowLeft size={16} /> Back
+    <div style={{ maxWidth: '680px', margin: '0 auto' }} className="animate-fade-in">
+
+      {/* ── Back ─────────────────────────────────────────── */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-1.5 mb-4 transition-colors"
+        style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+      >
+        <ArrowLeft size={15} /> Back
       </button>
 
-      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-        {/* Hero section */}
-        <div className="relative bg-gradient-to-r from-primary/10 to-transparent p-6 pb-8">
-          <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-            <div className="w-28 h-28 rounded-full bg-secondary flex items-center justify-center text-4xl font-bold border-4 border-primary/20 shadow-lg">
-              {player.name.charAt(0)}
+      {/* ── Player hero card ─────────────────────────────── */}
+      <div className="sf-card overflow-hidden mb-3">
+        {/* Top band — team color strip */}
+        <div style={{ height: '4px', background: 'hsl(var(--primary))' }} />
+
+        <div className="flex items-center gap-4 px-4 py-4">
+          {/* Avatar */}
+          <div
+            className="shrink-0 rounded-full flex items-center justify-center"
+            style={{
+              width: '64px',
+              height: '64px',
+              background: 'hsl(var(--surface-3))',
+              fontSize: '24px',
+              fontWeight: 900,
+              color: 'hsl(var(--foreground))',
+            }}
+          >
+            {player.name.charAt(0)}
+          </div>
+
+          {/* Name + meta */}
+          <div className="flex-1 min-w-0">
+            <h1
+              className="font-bold truncate"
+              style={{ fontSize: '20px', color: 'hsl(var(--foreground))', lineHeight: 1.2 }}
+            >
+              {player.name}
+            </h1>
+            <p style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))', marginTop: '2px' }}>
+              {player.position} · {player.team}
+            </p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {[`#${player.number}`, player.nationality, `${player.age} yrs`].map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    color: 'hsl(var(--muted-foreground))',
+                    background: 'hsl(var(--surface-2))',
+                    border: '1px solid hsl(var(--border))',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
-            <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-2xl md:text-3xl font-bold">{player.name}</h1>
-              <p className="text-muted-foreground mt-1">{player.position} • {player.team}</p>
-              <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
-                <span className="text-xs bg-secondary px-2 py-1 rounded-full">#{player.number}</span>
-                <span className="text-xs bg-secondary px-2 py-1 rounded-full">{player.nationality}</span>
-                <span className="text-xs bg-secondary px-2 py-1 rounded-full">{player.age} years</span>
-              </div>
+          </div>
+
+          {/* Rating badge */}
+          <div
+            className="shrink-0 flex flex-col items-center justify-center rounded"
+            style={{
+              width: '52px',
+              height: '52px',
+              background: `${ratingColor(player.stats.rating)}18`,
+              border: `1px solid ${ratingColor(player.stats.rating)}40`,
+            }}
+          >
+            <span style={{ fontSize: '20px', fontWeight: 900, color: ratingColor(player.stats.rating), lineHeight: 1 }}>
+              {player.stats.rating.toFixed(1)}
+            </span>
+            <span style={{ fontSize: '9px', fontWeight: 600, color: 'hsl(var(--muted-foreground))', letterSpacing: '0.04em', marginTop: '2px' }}>
+              RATING
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Season stats ─────────────────────────────────── */}
+      <div className="sf-card mb-3 overflow-hidden">
+        <SectionHeader title="Season statistics" />
+
+        {/* Key stats grid */}
+        <div
+          className="grid grid-cols-4"
+          style={{ borderBottom: '1px solid hsl(var(--border))' }}
+        >
+          {[
+            { label: 'Goals',       value: player.stats.goals },
+            { label: 'Assists',     value: player.stats.assists },
+            { label: 'Appearances', value: player.stats.appearances },
+            { label: 'Minutes',     value: player.stats.minutes },
+          ].map(({ label, value }, i) => (
+            <div
+              key={label}
+              className="flex flex-col items-center py-4 gap-1"
+              style={{
+                borderRight: i < 3 ? '1px solid hsl(var(--border))' : 'none',
+              }}
+            >
+              <span style={{ fontSize: '22px', fontWeight: 800, color: 'hsl(var(--foreground))', lineHeight: 1 }}>
+                {value}
+              </span>
+              <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))', fontWeight: 500 }}>
+                {label}
+              </span>
             </div>
-          </div>
+          ))}
         </div>
 
-        {/* Stats grid */}
-        <div className="p-6 pt-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Season Stats</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Appearances" value={player.stats.appearances} icon={Calendar} />
-            <StatCard label="Goals" value={player.stats.goals} icon={Trophy} color="text-green-500" />
-            <StatCard label="Assists" value={player.stats.assists} icon={Heart} color="text-blue-500" />
-            <StatCard label="Rating" value={player.stats.rating} icon={Activity} color="text-yellow-500" />
-          </div>
+        {/* Detailed stat rows */}
+        <div className="px-4 py-2">
+          {[
+            { label: 'Shots',           value: player.stats.shots },
+            { label: 'Passes completed', value: player.stats.passes },
+            { label: 'Yellow cards',     value: player.stats.yellowCards },
+            { label: 'Red cards',        value: player.stats.redCards },
+          ].map(({ label, value }) => (
+            <StatRow key={label} label={label} value={value} />
+          ))}
         </div>
+      </div>
 
-        {/* Detailed stats */}
-        <div className="p-6 pt-0 border-t border-border mt-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Detailed</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <DetailRow label="Minutes played" value={player.stats.minutes} />
-            <DetailRow label="Shots" value={player.stats.shots} />
-            <DetailRow label="Passes completed" value={player.stats.passes} />
-            <DetailRow label="Height" value={player.height} />
-            <DetailRow label="Weight" value={player.weight} />
-          </div>
+      {/* ── Personal info ────────────────────────────────── */}
+      <div className="sf-card mb-3 overflow-hidden">
+        <SectionHeader title="Player info" />
+        <div className="px-4 py-2">
+          {[
+            { label: 'Height',        value: player.height },
+            { label: 'Weight',        value: player.weight },
+            { label: 'Preferred foot', value: player.foot },
+            { label: 'Nationality',   value: player.nationality },
+          ].map(({ label, value }) => (
+            <StatRow key={label} label={label} value={value} />
+          ))}
         </div>
+      </div>
 
-        {/* Bio */}
-        <div className="p-6 pt-0 border-t border-border">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">About</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{player.bio}</p>
-        </div>
+      {/* ── Bio ──────────────────────────────────────────── */}
+      <div className="sf-card overflow-hidden">
+        <SectionHeader title="About" />
+        <p className="px-4 py-3" style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))', lineHeight: 1.6 }}>
+          {player.bio}
+        </p>
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, icon: Icon, color = 'text-foreground' }: { label: string; value: string | number; icon: any; color?: string }) {
+/* ── Shared sub-components ─────────────────────────────────── */
+
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="bg-secondary/30 rounded-xl p-3 text-center hover:bg-secondary/50 transition-colors">
-      <Icon size={20} className={`mx-auto mb-2 ${color} opacity-80`} />
-      <div className="text-xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+    <div
+      className="px-4 py-2.5"
+      style={{
+        background: 'hsl(var(--surface-2))',
+        borderBottom: '1px solid hsl(var(--border))',
+      }}
+    >
+      <span style={{ fontSize: '12px', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {title}
+      </span>
     </div>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string | number }) {
+function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-border/50">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div
+      className="flex items-center justify-between py-2.5"
+      style={{ borderBottom: '1px solid hsl(var(--border))' }}
+    >
+      <span style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>{label}</span>
+      <span style={{ fontSize: '13px', fontWeight: 600, color: 'hsl(var(--foreground))' }}>{value}</span>
     </div>
   );
 }

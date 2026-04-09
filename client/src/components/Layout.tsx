@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Trophy, User, Menu, X, Star, Flame } from 'lucide-react';
+import { Home, Trophy, Star, User, Menu, X } from 'lucide-react';
 import SearchBar from './SearchBar';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -16,73 +16,119 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-white/10 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            <Link to="/" className="flex items-center gap-2 shrink-0 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition">
-                <Flame size={16} className="text-white" />
+      {/* ── Top header ─────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-50 border-b"
+        style={{
+          background: 'hsl(var(--card))',
+          borderColor: 'hsl(var(--border))',
+        }}
+      >
+        <div className="max-w-5xl mx-auto px-3 sm:px-4">
+          <div className="flex items-center gap-3 h-12">
+
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 shrink-0">
+              <div
+                className="w-7 h-7 rounded flex items-center justify-center"
+                style={{ background: 'hsl(var(--primary))' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="6" stroke="white" strokeWidth="1.5" />
+                  <path d="M4 7h6M7 4v6" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
               </div>
-              <span className="font-black text-lg bg-gradient-to-r from-white to-primary bg-clip-text text-transparent hidden sm:inline">
+              <span
+                className="font-black text-base tracking-tight hidden sm:inline"
+                style={{ color: 'hsl(var(--foreground))' }}
+              >
                 SportScore
               </span>
             </Link>
 
-            <div className="hidden md:flex flex-1 justify-center px-6">
+            {/* Search — fills remaining space */}
+            <div className="flex-1 hidden md:block">
               <SearchBar />
             </div>
 
-            <nav className="hidden md:flex items-center gap-2">
+            {/* Desktop nav */}
+            <nav className="hidden md:flex items-center gap-1 shrink-0">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-all ${
-                      isActive
-                        ? 'bg-primary/20 text-primary shadow-md border border-primary/30'
-                        : 'text-muted-foreground hover:text-white hover:bg-white/10'
-                    }`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                    style={{
+                      color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                      background: isActive ? 'rgba(244,115,28,0.1)' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) (e.currentTarget as HTMLElement).style.color = 'hsl(var(--foreground))';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) (e.currentTarget as HTMLElement).style.color = 'hsl(var(--muted-foreground))';
+                    }}
                   >
-                    <div className="flex items-center gap-2">
-                      <item.icon size={16} />
-                      {item.label}
-                    </div>
+                    <item.icon size={15} />
+                    {item.label}
                   </Link>
                 );
               })}
             </nav>
 
+            {/* Mobile: hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-muted-foreground hover:text-white hover:bg-white/10 rounded-lg transition"
+              className="md:hidden ml-auto p-1.5 rounded transition-colors"
+              style={{ color: 'hsl(var(--muted-foreground))' }}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
 
+        {/* ── Mobile dropdown ───────────────────────────────── */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-md p-3 animate-fade-in">
-            <div className="mb-4"><SearchBar /></div>
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold ${
-                  location.pathname === item.path ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <item.icon size={18} />
-                {item.label}
-              </Link>
-            ))}
+          <div
+            className="md:hidden border-t animate-fade-in"
+            style={{
+              background: 'hsl(var(--card))',
+              borderColor: 'hsl(var(--border))',
+            }}
+          >
+            <div className="px-3 py-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+              <SearchBar />
+            </div>
+            <nav className="px-2 py-2 flex flex-col gap-0.5">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium"
+                    style={{
+                      color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                      background: isActive ? 'rgba(244,115,28,0.08)' : 'transparent',
+                    }}
+                  >
+                    <item.icon size={17} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
         )}
       </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
+
+      {/* ── Page content ───────────────────────────────────── */}
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4">
+        {children}
+      </main>
     </div>
   );
 }

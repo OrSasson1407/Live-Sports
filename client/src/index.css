@@ -4,73 +4,135 @@
 
 @layer base {
   :root {
-    --background: 220 12% 8%;
-    --foreground: 0 0% 98%;
-    --card: 220 10% 12%;
-    --card-hover: 220 10% 16%;
-    --border: 220 10% 18%;
-    --primary: 217 91% 60%;
-    --primary-glow: 217 91% 60% / 0.3;
-    --accent: 160 80% 45%;
-    --danger: 0 84% 60%;
-    --muted: 220 8% 70%;
-    --muted-foreground: 220 8% 60%;
+    /* Sofascore dark palette */
+    --background: 240 10% 7%;        /* #101018 - page bg */
+    --foreground: 0 0% 95%;          /* #f2f2f2 - primary text */
+    --card: 240 8% 11%;              /* #191921 - card surfaces */
+    --card-hover: 240 8% 14%;        /* #1f1f2a - hover state */
+    --border: 240 6% 18%;            /* #27272f - borders */
+    --primary: 25 92% 53%;           /* #f4731c - sofascore orange */
+    --primary-glow: 25 92% 53% / 0.15;
+    --accent: 25 92% 53%;            /* same orange */
+    --danger: 0 76% 55%;             /* #e03434 - red */
+    --success: 142 60% 42%;          /* #2ea85c - green */
+    --warning: 44 95% 52%;           /* #fcca22 - yellow */
+    --muted: 240 5% 55%;
+    --muted-foreground: 240 5% 50%;  /* #7a7a82 */
+    --surface-2: 240 8% 15%;         /* elevated surface */
+    --surface-3: 240 7% 19%;         /* even more elevated */
   }
+
   * { @apply border-border; }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
-    background-image: radial-gradient(circle at 20% 0%, rgba(59,130,246,0.08), transparent 70%);
+    font-family: 'Roboto', 'Noto Sans', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: hsl(var(--background));
   }
+
+  * { -webkit-tap-highlight-color: transparent; }
 }
 
-/* Live pulse with glow */
+/* ─── Live pulse dot ─────────────────────────────────────── */
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 2px #ef4444); }
-  50% { opacity: 0.5; transform: scale(1.1); filter: drop-shadow(0 0 8px #ef4444); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(224, 52, 52, 0.6); }
+  50%       { opacity: 0.8; box-shadow: 0 0 0 4px rgba(224, 52, 52, 0); }
 }
 .live-dot {
-  width: 8px; height: 8px;
-  background: #ef4444;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #e03434;
   border-radius: 50%;
-  animation: live-pulse 1s infinite;
+  animation: live-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
-/* Score flash */
+/* ─── Score flash on goal ────────────────────────────────── */
 @keyframes scoreFlash {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); color: #3b82f6; text-shadow: 0 0 6px #3b82f6; }
-  100% { transform: scale(1); }
+  0%   { color: hsl(var(--foreground)); }
+  30%  { color: hsl(var(--primary)); transform: scale(1.15); }
+  100% { color: hsl(var(--foreground)); transform: scale(1); }
 }
 .score-flash {
-  animation: scoreFlash 0.3s cubic-bezier(0.2, 1.2, 0.8, 1);
+  animation: scoreFlash 0.35s cubic-bezier(0.2, 1.4, 0.6, 1);
 }
 
-/* Row hover */
+/* ─── Match row ──────────────────────────────────────────── */
 .match-row {
-  transition: all 0.2s ease;
+  transition: background-color 0.12s ease;
 }
 .match-row:hover {
-  background: linear-gradient(90deg, rgba(59,130,246,0.1), transparent);
-  transform: translateX(2px);
+  background-color: hsl(var(--card-hover));
 }
 
-/* Glass card */
-.glass-card {
-  background: rgba(18, 22, 30, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(59,130,246,0.2);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+/* ─── Sofascore card surface ─────────────────────────────── */
+.sf-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: hsl(var(--card)); border-radius: 10px; }
-::-webkit-scrollbar-thumb { background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--accent))); border-radius: 10px; }
-
-/* Animations */
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ─── Competition header ─────────────────────────────────── */
+.comp-header {
+  background: hsl(var(--surface-2));
+  border-bottom: 1px solid hsl(var(--border));
 }
-.animate-fade-in { animation: fadeSlideUp 0.25s ease-out; }
+
+/* ─── Tab active indicator ───────────────────────────────── */
+.tab-active-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 1px 1px 0 0;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 4px; }
+::-webkit-scrollbar-track  { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb  { background: hsl(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted)); }
+
+/* ─── Animations ─────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.18s ease-out; }
+
+/* ─── Typography helpers ─────────────────────────────────── */
+.text-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+}
+
+/* ─── Status badges ──────────────────────────────────────── */
+.badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e03434;
+  background: rgba(224, 52, 52, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.badge-ft {
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--surface-2));
+  padding: 2px 6px;
+  border-radius: 4px;
+}

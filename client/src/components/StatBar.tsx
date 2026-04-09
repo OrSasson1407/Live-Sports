@@ -6,24 +6,53 @@ interface StatBarProps {
 
 export function StatBar({ label, home, away }: StatBarProps) {
   const total = home + away || 1;
-  const homePercent = (home / total) * 100;
+  const homePercent = Math.round((home / total) * 100);
+  const awayPercent = 100 - homePercent;
+
+  const isHomeWinning = home > away;
+  const isAwayWinning = away > home;
 
   return (
-    <div className="group">
-      <div className="flex justify-between text-sm mb-1.5">
-        <span className="text-muted-foreground font-medium">{label}</span>
-        <span className="font-mono text-foreground font-bold">
-          {home} – {away}
+    <div>
+      {/* ── Values + label ──────────────────────────────── */}
+      <div className="flex items-center justify-between mb-1.5" style={{ gap: '8px' }}>
+        <span
+          className="font-mono text-sm font-bold tabular-nums w-8 text-left"
+          style={{ color: isHomeWinning ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
+        >
+          {home}
+        </span>
+        <span
+          className="text-xs text-center flex-1 truncate"
+          style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
+        >
+          {label}
+        </span>
+        <span
+          className="font-mono text-sm font-bold tabular-nums w-8 text-right"
+          style={{ color: isAwayWinning ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
+        >
+          {away}
         </span>
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-white/10 shadow-inner">
+
+      {/* ── Dual bar ────────────────────────────────────── */}
+      <div className="flex h-1 rounded-full overflow-hidden gap-px" style={{ background: 'hsl(var(--surface-3))' }}>
         <div
-          className="bg-gradient-to-r from-primary to-accent transition-all duration-500 group-hover:brightness-110"
-          style={{ width: `${homePercent}%` }}
+          className="h-full transition-all duration-500 rounded-l-full"
+          style={{
+            width: `${homePercent}%`,
+            background: isHomeWinning ? 'hsl(var(--primary))' : 'hsl(var(--surface-3))',
+            opacity: isHomeWinning ? 1 : 0.5,
+          }}
         />
         <div
-          className="bg-white/20 transition-all duration-500"
-          style={{ width: `${100 - homePercent}%` }}
+          className="h-full transition-all duration-500 rounded-r-full"
+          style={{
+            width: `${awayPercent}%`,
+            background: isAwayWinning ? 'hsl(var(--muted-foreground))' : 'hsl(var(--surface-3))',
+            opacity: isAwayWinning ? 0.7 : 0.3,
+          }}
         />
       </div>
     </div>

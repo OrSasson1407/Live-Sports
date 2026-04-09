@@ -1,4 +1,4 @@
-import { Star, Clock, ChevronRight, TrendingUp } from 'lucide-react';
+import { Star, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Match } from '../types';
 import { useMemo, useState, useEffect, useRef } from 'react';
@@ -9,19 +9,27 @@ interface MatchRowProps {
   onToggleFavourite: (id: string) => void;
 }
 
+/* Flashes orange briefly when a score changes */
 function ScoreDisplay({ score, previousScore }: { score: number; previousScore: number }) {
   const [flash, setFlash] = useState(false);
   const prevRef = useRef(previousScore);
+
   useEffect(() => {
     if (score !== prevRef.current) {
       setFlash(true);
-      const timer = setTimeout(() => setFlash(false), 300);
+      const t = setTimeout(() => setFlash(false), 350);
       prevRef.current = score;
-      return () => clearTimeout(timer);
+      return () => clearTimeout(t);
     }
   }, [score]);
+
   return (
-    <span className={`font-mono font-black text-lg tabular-nums transition-all ${flash ? 'score-flash text-primary' : 'text-white'}`}>
+    <span
+      className={`font-mono font-bold text-sm tabular-nums transition-colors ${
+        flash ? 'score-flash' : ''
+      }`}
+      style={{ color: flash ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}
+    >
       {score}
     </span>
   );
@@ -34,72 +42,106 @@ export function MatchRow({ match, isFavourite, onToggleFavourite }: MatchRowProp
   const statusDisplay = useMemo(() => {
     if (match.status === 'live') {
       return (
-        <div className="flex items-center gap-1.5 bg-red-500/20 px-2 py-0.5 rounded-full">
+        <div className="badge-live">
           <span className="live-dot" />
-          <span className="text-xs font-bold text-red-500 uppercase">{match.clock || "LIVE"}</span>
+          {match.clock || 'LIVE'}
         </div>
       );
     }
-    if (match.status === 'finished') return <span className="text-xs font-bold text-muted-foreground bg-white/10 px-2 py-0.5 rounded-full">FT</span>;
-    // scheduled – show "2nd half", "1st half" or time
-    if (match.clock && (match.clock.includes('half') || match.clock.includes('Half'))) {
-      return <span className="text-xs font-bold text-muted-foreground bg-white/10 px-2 py-0.5 rounded-full">{match.clock}</span>;
+    if (match.status === 'finished') {
+      return <span className="badge-ft">FT</span>;
     }
     return (
-      <div className="flex items-center gap-1 text-muted-foreground bg-white/10 px-2 py-0.5 rounded-full">
-        <Clock size={12} />
-        <span className="text-xs font-medium">{match.startTime || "19:00"}</span>
+      <div className="flex items-center gap-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+        <Clock size={11} />
+        <span style={{ fontSize: '12px', fontWeight: 500 }}>{match.startTime || '19:00'}</span>
       </div>
     );
   }, [match.status, match.clock, match.startTime]);
 
-  const handleClick = () => navigate(`/match/${match.gameId}`);
-
   return (
     <div
-      className="match-row grid grid-cols-12 items-center px-4 py-3 cursor-pointer border-b border-white/5 transition-all"
-      onClick={handleClick}
+      className="match-row flex items-center px-3 py-0 cursor-pointer"
+      style={{
+        minHeight: '52px',
+        borderBottom: '1px solid hsl(var(--border))',
+      }}
+      onClick={() => navigate(`/match/${match.gameId}`)}
     >
-      {/* Teams & scores */}
-      <div className="col-span-6 flex flex-col gap-1">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold truncate">{match.homeTeam}</span>
+      {/* ── Status column ────────────────────────────── */}
+      <div className="flex flex-col items-center justify-center shrink-0" style={{ width: '52px' }}>
+        {statusDisplay}
+      </div>
+
+      {/* ── Vertical divider ─────────────────────────── */}
+      <div className="self-stretch w-px shrink-0 mx-2" style={{ background: 'hsl(var(--border))' }} />
+
+      {/* ── Teams + scores ───────────────────────────── */}
+      <div className="flex-1 flex flex-col gap-0.5 py-2 min-w-0">
+        {/* Home team */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Team crest placeholder */}
+            <div
+              className="w-4 h-4 rounded-sm shrink-0"
+              style={{ background: 'hsl(var(--surface-3))' }}
+            />
+            <span
+              className="text-sm truncate"
+              style={{
+                fontWeight: match.homeScore > match.awayScore ? 700 : 400,
+                color: match.status === 'finished' && match.awayScore > match.homeScore
+                  ? 'hsl(var(--muted-foreground))'
+                  : 'hsl(var(--foreground))',
+              }}
+            >
+              {match.homeTeam}
+            </span>
+          </div>
           <ScoreDisplay score={match.homeScore} previousScore={prevScores.home} />
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium truncate text-muted-foreground">{match.awayTeam}</span>
+
+        {/* Away team */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="w-4 h-4 rounded-sm shrink-0"
+              style={{ background: 'hsl(var(--surface-3))' }}
+            />
+            <span
+              className="text-sm truncate"
+              style={{
+                fontWeight: match.awayScore > match.homeScore ? 700 : 400,
+                color: match.status === 'finished' && match.homeScore > match.awayScore
+                  ? 'hsl(var(--muted-foreground))'
+                  : 'hsl(var(--foreground))',
+              }}
+            >
+              {match.awayTeam}
+            </span>
+          </div>
           <ScoreDisplay score={match.awayScore} previousScore={prevScores.away} />
         </div>
       </div>
 
-      {/* Status & odds */}
-      <div className="col-span-3 flex flex-col items-center gap-1">
-        {statusDisplay}
-        {/* Odds pill like SofaScore */}
-        <div className="hidden sm:flex items-center gap-1 text-[11px] bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-          <span className="text-muted-foreground">1</span>
-          <span className="font-mono text-primary font-bold">2.10</span>
-          <span className="text-muted-foreground">X</span>
-          <span className="font-mono text-primary font-bold">3.40</span>
-          <TrendingUp size={10} className="text-green-500 ml-0.5" />
-        </div>
-      </div>
-
-      {/* Favourite and vote button */}
-      <div className="col-span-3 flex items-center justify-end gap-2">
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleFavourite(match.gameId); }}
-          className="p-1.5 rounded-full hover:bg-primary/20 transition hover:scale-110"
-        >
-          <Star size={14} className={isFavourite ? "fill-yellow-500 text-yellow-500 drop-shadow-glow" : "text-muted-foreground"} />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); alert(`Vote for ${match.homeTeam} vs ${match.awayTeam}`); }}
-          className="text-[11px] font-bold bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 text-primary px-3 py-1.5 rounded-full transition shadow-md whitespace-nowrap"
-        >
-          Who will win? <span className="ml-1">🎯</span>
-        </button>
-      </div>
+      {/* ── Favourite star ───────────────────────────── */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleFavourite(match.gameId); }}
+        className="shrink-0 p-2 rounded transition-colors ml-1"
+        style={{ color: isFavourite ? '#fcca22' : 'hsl(var(--surface-3))' }}
+        onMouseEnter={(e) => {
+          if (!isFavourite) (e.currentTarget as HTMLElement).style.color = 'hsl(var(--muted-foreground))';
+        }}
+        onMouseLeave={(e) => {
+          if (!isFavourite) (e.currentTarget as HTMLElement).style.color = 'hsl(var(--surface-3))';
+        }}
+      >
+        <Star
+          size={15}
+          fill={isFavourite ? '#fcca22' : 'none'}
+          strokeWidth={isFavourite ? 0 : 1.5}
+        />
+      </button>
     </div>
   );
 }

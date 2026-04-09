@@ -1,56 +1,34 @@
-// server/src/services/LiveFeedEngine.ts
 import { config } from '../config/index';
 import { CacheService } from './CacheService';
 import { WebSocketService } from '../socket/WebSocketService';
 import { DatabaseSyncQueue } from './DatabaseSyncQueue';
 import { GameTick } from '../types/ticker';
 
-// --- TYPESCRIPT DEFINITIONS ---
+// --- Types (same as before) ---
 type SofascoreEvent = {
   id: number;
-  status?: {
-    type?: string;
-    description?: string;
-  };
-  homeTeam?: {
-    name?: string;
-    shortName?: string;
-  };
-  awayTeam?: {
-    name?: string;
-    shortName?: string;
-  };
+  status?: { type?: string; description?: string };
+  homeTeam?: { name?: string; shortName?: string };
+  awayTeam?: { name?: string; shortName?: string };
   homeScore?: { current?: number };
   awayScore?: { current?: number };
-  tournament?: {
-    sport?: { name?: string };
-  };
+  tournament?: { sport?: { name?: string } };
 };
-
-type SofascoreResponse = {
-  events?: SofascoreEvent[];
-};
-
-type SofascoreIncident = {
-  incidentType?: string;
-  time?: number;
-  player?: {
-    name?: string;
-  };
-};
-
-type SofascoreIncidentResponse = {
-  incidents?: SofascoreIncident[];
-};
-// ------------------------------
+type SofascoreResponse = { events?: SofascoreEvent[] };
+type SofascoreIncident = { incidentType?: string; time?: number; player?: { name?: string } };
+type SofascoreIncidentResponse = { incidents?: SofascoreIncident[] };
+// -----------------------------
 
 export class LiveFeedEngine {
   private static pollTimer: NodeJS.Timeout;
-  private static isHyperDrive = false; // Tracks if we are in fast-polling mode
+  private static isHyperDrive = false;
+  private static isRunning = false;
+  private static lastIncidentFetch = new Map<string, number>();
+  private static consecutiveFailures = 0; // track API failures
 
   public static start() {
-    console.log(`🚀 Live Feed Engine V3 Started.`);
-    this.scheduleNextPoll(1000); // Start immediately
+    console.log(`🚀 Live Feed Engine V6 (Free Tier Optimized + Mock Fallback)`);
+    this.scheduleNextPoll(1000);
   }
 
   public static stop() {
@@ -62,136 +40,203 @@ export class LiveFeedEngine {
     this.pollTimer = setTimeout(() => this.fetchAndProcessData(), delayMs);
   }
 
-  private static async fetchAndProcessData() {
-    let totalLiveGamesActive = 0;
-
-    // Fetch all sports CONCURRENTLY instead of sequentially
-    const fetchPromises = config.sportsToPoll.map(async (sport) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
-
+  /**
+   * Robust fetch with exponential backoff (long waits for free tier)
+   */
+  private static async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    maxRetries = 2,
+    baseDelay = 15000 // 15 seconds initial wait for 429
+  ): Promise<Response | null> {
+    let attempt = 0;
+    while (attempt <= maxRetries) {
       try {
-        const response = await fetch(
-          `https://${config.rapidApiHost}/tournaments/get-live-events?sport=${sport}`,
-          {
-            headers: {
-              'x-rapidapi-key': config.rapidApiKey,
-              'x-rapidapi-host': config.rapidApiHost,
-            },
-            signal: controller.signal // Prevent hanging requests
-          }
-        );
-
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-
-        const data = (await response.json()) as SofascoreResponse;
-        return { sport, data };
-      } catch (error) {
-        console.error(`❌ Fetch Error for ${sport}:`, error);
-        return null; // Return null so Promise.allSettled doesn't break
+        const res = await fetch(url, options);
+        if (res.status === 429) {
+          const retryAfter = res.headers.get('retry-after');
+          let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseDelay * Math.pow(2, attempt);
+          waitTime = Math.min(waitTime, 60000); // cap at 60 seconds
+          console.warn(`⛔ Rate limited (attempt ${attempt + 1}/${maxRetries + 1}). Waiting ${waitTime / 1000}s`);
+          await new Promise(r => setTimeout(r, waitTime));
+          attempt++;
+          continue;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this.consecutiveFailures = 0; // success, reset failure counter
+        return res;
+      } catch (err: any) {
+        if (attempt >= maxRetries) {
+          console.error(`❌ API failed after ${maxRetries + 1} attempts: ${err.message}`);
+          return null;
+        }
+        const waitTime = Math.min(baseDelay * Math.pow(2, attempt), 60000);
+        console.warn(`⚠️ Fetch error: ${err.message}. Retrying in ${waitTime / 1000}s`);
+        await new Promise(r => setTimeout(r, waitTime));
+        attempt++;
       }
-    });
+    }
+    return null;
+  }
 
-    const results = await Promise.allSettled(fetchPromises);
+  /**
+   * Mock live data when real API is unavailable
+   */
+  private static generateMockData(sport: string): GameTick[] {
+    console.log(`🎭 Using MOCK data for ${sport} (API rate-limited or failed)`);
+    const mockGames: GameTick[] = [
+      {
+        gameId: `MOCK-1`,
+        sport: sport === 'football' ? 'soccer' : 'basketball',
+        homeTeam: 'Demo FC',
+        awayTeam: 'Test United',
+        homeScore: 1,
+        awayScore: 0,
+        clock: 'LIVE 32\'',
+        status: 'live',
+      },
+      {
+        gameId: `MOCK-2`,
+        sport: sport === 'football' ? 'soccer' : 'basketball',
+        homeTeam: 'City Stars',
+        awayTeam: 'North End',
+        homeScore: 2,
+        awayScore: 2,
+        clock: 'LIVE 68\'',
+        status: 'live',
+      },
+    ];
+    return mockGames;
+  }
 
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) {
-        const { sport, data } = result.value;
-        
-        if (!data.events || data.events.length === 0) continue;
-        
-        totalLiveGamesActive += data.events.length;
+  private static async fetchAndProcessData() {
+    if (this.isRunning) return;
+    this.isRunning = true;
 
-        for (const event of data.events) {
-          const gameId = `SOFA-${event.id}`;
-          const sportType = sport === 'football' ? 'soccer' : 'basketball';
+    let totalLiveGamesActive = 0;
+    const results: any[] = [];
 
-          const liveTick: GameTick = {
-            gameId,
-            sport: sportType,
-            homeTeam: event.homeTeam?.shortName || event.homeTeam?.name || 'Home',
-            awayTeam: event.awayTeam?.shortName || event.awayTeam?.name || 'Away',
-            homeScore: event.homeScore?.current ?? 0,
-            awayScore: event.awayScore?.current ?? 0,
-            clock: event.status?.description || 'LIVE',
-            status: event.status?.type === 'finished' ? 'finished' : 'live',
-          };
+    for (let idx = 0; idx < config.sportsToPoll.length; idx++) {
+      const sport = config.sportsToPoll[idx];
+      let data: SofascoreResponse | null = null;
 
-          const oldGame = CacheService.getGame(gameId);
-          const isGoal = oldGame && (liveTick.homeScore > oldGame.homeScore || liveTick.awayScore > oldGame.awayScore);
-          const hasChanged = CacheService.setAndDiff(liveTick);
+      // Try real API
+      const url = `https://${config.rapidApiHost}/tournaments/get-live-events?sport=${sport}`;
+      const response = await this.fetchWithRetry(url, {
+        headers: {
+          'x-rapidapi-key': config.rapidApiKey,
+          'x-rapidapi-host': config.rapidApiHost,
+        },
+      }, 2, 15000);
 
-          if (hasChanged) {
-            // 1. Instantly update UI for snappy feel
-            WebSocketService.broadcast(gameId, 'TICK', liveTick);
-            
-            // 2. Queue for Database saving (Non-Blocking)
-            DatabaseSyncQueue.enqueue(liveTick);
-            
-            // 3. The "365Scores" Incident Feature
-            if (isGoal) {
-               this.handleDeepGoalIncident(event.id, liveTick);
+      if (response) {
+        data = await response.json() as SofascoreResponse;
+        this.consecutiveFailures = 0;
+      } else {
+        this.consecutiveFailures++;
+        // After 3 consecutive failures, use mock data
+        if (config.enableMockFallback && this.consecutiveFailures >= 3) {
+          console.warn(`⚠️ ${this.consecutiveFailures} consecutive API failures – switching to MOCK data`);
+          const mockGames = this.generateMockData(sport);
+          // Process mock games directly
+          for (const mockTick of mockGames) {
+            const hasChanged = CacheService.setAndDiff(mockTick);
+            if (hasChanged) {
+              WebSocketService.broadcast(mockTick.gameId, 'TICK', mockTick);
+              DatabaseSyncQueue.enqueue(mockTick);
             }
+          }
+          totalLiveGamesActive = mockGames.length;
+        }
+        continue;
+      }
+
+      if (!data?.events || data.events.length === 0) continue;
+
+      totalLiveGamesActive += data.events.length;
+
+      for (const event of data.events) {
+        const gameId = `SOFA-${event.id}`;
+        const sportType = sport === 'football' ? 'soccer' : 'basketball';
+
+        const liveTick: GameTick = {
+          gameId,
+          sport: sportType,
+          homeTeam: event.homeTeam?.shortName || event.homeTeam?.name || 'Home',
+          awayTeam: event.awayTeam?.shortName || event.awayTeam?.name || 'Away',
+          homeScore: event.homeScore?.current ?? 0,
+          awayScore: event.awayScore?.current ?? 0,
+          clock: event.status?.description || 'LIVE',
+          status: event.status?.type === 'finished' ? 'finished' : 'live',
+        };
+
+        const oldGame = CacheService.getGame(gameId);
+        const isGoal = oldGame &&
+          (liveTick.homeScore > oldGame.homeScore || liveTick.awayScore > oldGame.awayScore);
+
+        const hasChanged = CacheService.setAndDiff(liveTick);
+
+        if (hasChanged) {
+          WebSocketService.broadcast(gameId, 'TICK', liveTick);
+          DatabaseSyncQueue.enqueue(liveTick);
+          if (isGoal) {
+            setTimeout(() => this.handleDeepGoalIncident(event.id, liveTick), 1500);
           }
         }
       }
     }
 
-    // 🔥 ADAPTIVE POLLING LOGIC 🔥
+    // Adaptive polling
     if (totalLiveGamesActive > 0) {
-      // 👈 ADDED: Explicitly log the active game count to the terminal
-      console.log(`📡 [POLL COMPLETE] Currently tracking ${totalLiveGamesActive} active live games.`);
-
+      console.log(`📡 [POLL COMPLETE] Tracking ${totalLiveGamesActive} live games.`);
       if (!this.isHyperDrive) {
-        console.log(`🏎️ Live games detected! Shifting to Hyper-Drive (${config.pollInterval / 1000}s)`);
+        console.log(`🏎️ Live games detected! Hyper-Drive (${config.pollInterval / 1000}s)`);
         this.isHyperDrive = true;
       }
-      this.scheduleNextPoll(config.pollInterval); // Fast polling
+      this.scheduleNextPoll(Math.max(config.pollInterval, 180000)); // min 3 min
     } else {
       if (this.isHyperDrive) {
-        console.log(`💤 No live games. Shifting to Eco-Mode (5 minutes) to save API credits.`);
+        console.log(`💤 No live games. Eco-Mode (5 min)`);
         this.isHyperDrive = false;
       }
-      this.scheduleNextPoll(300000); // 5 Minutes (300,000ms)
+      this.scheduleNextPoll(300000); // 5 minutes
     }
+
+    this.isRunning = false;
   }
 
-  /**
-   * Makes a micro-request to get the EXACT player who scored
-   */
   private static async handleDeepGoalIncident(eventId: number, game: GameTick) {
+    const now = Date.now();
+    const lastFetch = this.lastIncidentFetch.get(game.gameId) || 0;
+    if (now - lastFetch < 10000) return;
+    this.lastIncidentFetch.set(game.gameId, now);
+
     try {
-      const response = await fetch(
-        `https://${config.rapidApiHost}/events/get-incidents?eventId=${eventId}`,
+      const response = await this.fetchWithRetry(
+        `https://${config.rapidApiHost}/matches/get-incidents?eventId=${eventId}`,
         {
           headers: {
             'x-rapidapi-key': config.rapidApiKey,
             'x-rapidapi-host': config.rapidApiHost,
           },
-        }
+        },
+        1,
+        5000
       );
-      
+      if (!response) return;
       const incidentData = (await response.json()) as SofascoreIncidentResponse;
-      
-      const latestGoal = incidentData?.incidents?.find((inc) => inc.incidentType === 'goal');
-
-      if (latestGoal && latestGoal.player?.name) {
-        const playerName = latestGoal.player.name;
-        const time = latestGoal.time;
-        
-        WebSocketService.broadcast('ALL', 'ALERT', { 
-          message: `🚨 GOAL! ${playerName} (${time}') | ${game.homeTeam} ${game.homeScore} - ${game.awayScore} ${game.awayTeam}` 
+      const latestGoal = incidentData?.incidents?.find(inc => inc.incidentType === 'goal');
+      if (latestGoal?.player?.name) {
+        WebSocketService.broadcast('ALL', 'ALERT', {
+          message: `🚨 GOAL! ${latestGoal.player.name} (${latestGoal.time}') | ${game.homeTeam} ${game.homeScore} - ${game.awayScore} ${game.awayTeam}`,
         });
       } else {
-        WebSocketService.broadcast('ALL', 'ALERT', { 
-          message: `🚨 GOAL in ${game.homeTeam} vs ${game.awayTeam}! (${game.homeScore} - ${game.awayScore})` 
+        WebSocketService.broadcast('ALL', 'ALERT', {
+          message: `🚨 GOAL in ${game.homeTeam} vs ${game.awayTeam}! (${game.homeScore} - ${game.awayScore})`,
         });
       }
-
     } catch (e) {
-      console.error("Could not fetch deep incident data");
+      console.error('⚠️ Incident fetch failed');
     }
   }
 }

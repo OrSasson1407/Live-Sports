@@ -1,36 +1,136 @@
-import { Trophy, MapPin, Calendar, Sparkles } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 const competitions = [
-  { id: 1, name: 'UEFA Champions League', country: 'Europe', teams: 32, matches: 125, color: 'from-blue-600 to-purple-600' },
-  { id: 2, name: 'Premier League', country: 'England', teams: 20, matches: 380, color: 'from-red-600 to-orange-600' },
-  { id: 3, name: 'NBA', country: 'USA', teams: 30, matches: 1230, color: 'from-orange-500 to-yellow-600' },
-  { id: 4, name: 'LaLiga', country: 'Spain', teams: 20, matches: 380, color: 'from-yellow-600 to-red-600' },
+  {
+    id: 1,
+    name: 'UEFA Champions League',
+    country: 'Europe',
+    sport: 'Football',
+    teams: 32,
+    season: '2024/25',
+    initials: 'UCL',
+    color: '#1a56db',
+  },
+  {
+    id: 2,
+    name: 'Premier League',
+    country: 'England',
+    sport: 'Football',
+    teams: 20,
+    season: '2024/25',
+    initials: 'PL',
+    color: '#38003c',
+  },
+  {
+    id: 3,
+    name: 'NBA',
+    country: 'USA',
+    sport: 'Basketball',
+    teams: 30,
+    season: '2024/25',
+    initials: 'NBA',
+    color: '#c9243f',
+  },
+  {
+    id: 4,
+    name: 'LaLiga',
+    country: 'Spain',
+    sport: 'Football',
+    teams: 20,
+    season: '2024/25',
+    initials: 'LL',
+    color: '#ee8707',
+  },
+  {
+    id: 5,
+    name: 'Bundesliga',
+    country: 'Germany',
+    sport: 'Football',
+    teams: 18,
+    season: '2024/25',
+    initials: 'BL',
+    color: '#d20515',
+  },
+  {
+    id: 6,
+    name: 'Serie A',
+    country: 'Italy',
+    sport: 'Football',
+    teams: 20,
+    season: '2024/25',
+    initials: 'SA',
+    color: '#024494',
+  },
 ];
+
+/* Group by sport */
+const grouped = competitions.reduce((acc, comp) => {
+  if (!acc[comp.sport]) acc[comp.sport] = [];
+  acc[comp.sport].push(comp);
+  return acc;
+}, {} as Record<string, typeof competitions>);
 
 export default function Competitions() {
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-black bg-gradient-to-r from-white to-primary bg-clip-text text-transparent">All Competitions</h2>
-      <div className="grid gap-4">
-        {competitions.map((comp) => (
+    <div>
+      {Object.entries(grouped).map(([sport, comps]) => (
+        <div key={sport} className="sf-card overflow-hidden mb-3">
+
+          {/* Sport group header */}
           <div
-            key={comp.id}
-            className="group flex items-center gap-4 p-4 glass-card rounded-xl hover:border-primary/50 transition-all cursor-pointer shadow-lg hover:shadow-2xl"
+            className="comp-header px-3 flex items-center"
+            style={{ height: '36px' }}
           >
-            <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${comp.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition`}>
-              <Trophy size={22} className="text-white drop-shadow-md" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-black group-hover:text-primary transition">{comp.name}</h3>
-              <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                <span className="flex items-center gap-1"><MapPin size={12} /> {comp.country}</span>
-                <span className="flex items-center gap-1"><Calendar size={12} /> {comp.teams} teams</span>
-                <span className="flex items-center gap-1"><Sparkles size={12} /> {comp.matches} matches</span>
-              </div>
-            </div>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {sport}
+            </span>
           </div>
-        ))}
-      </div>
+
+          {/* Competition rows */}
+          {comps.map((comp, idx) => (
+            <div
+              key={comp.id}
+              className="flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors"
+              style={{
+                borderBottom: idx < comps.length - 1 ? '1px solid hsl(var(--border))' : 'none',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--card-hover))')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              {/* League badge */}
+              <div
+                className="shrink-0 rounded flex items-center justify-center"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  background: `${comp.color}22`,
+                  border: `1px solid ${comp.color}40`,
+                }}
+              >
+                <span style={{ fontSize: '10px', fontWeight: 800, color: comp.color, letterSpacing: '0.02em' }}>
+                  {comp.initials}
+                </span>
+              </div>
+
+              {/* Name + meta */}
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-sm font-semibold truncate"
+                  style={{ color: 'hsl(var(--foreground))', lineHeight: 1.3 }}
+                >
+                  {comp.name}
+                </p>
+                <p style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))', marginTop: '1px' }}>
+                  {comp.country} · {comp.teams} teams · {comp.season}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <ChevronRight size={15} style={{ color: 'hsl(var(--surface-3))', flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

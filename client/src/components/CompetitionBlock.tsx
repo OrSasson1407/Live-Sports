@@ -1,7 +1,7 @@
+import { ChevronRight } from 'lucide-react';
 import { MatchRow } from './MatchRow';
 import { useFavourites } from '../hooks/useFavourites';
 import { GameTick } from '../store/useSportsStore';
-import { ChevronRight } from 'lucide-react';
 
 interface CompetitionBlockProps {
   competitionName: string;
@@ -9,23 +9,45 @@ interface CompetitionBlockProps {
   showVotePrompt?: boolean;
 }
 
-export function CompetitionBlock({ competitionName, matches, showVotePrompt = true }: CompetitionBlockProps) {
+export function CompetitionBlock({ competitionName, matches }: CompetitionBlockProps) {
   const { isFavourite, toggleFavourite } = useFavourites();
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden transition-all hover:shadow-2xl">
-      {/* Header with "More >" */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-primary/20 to-transparent border-b border-white/10">
-        <h3 className="text-xs font-black uppercase tracking-wider text-primary drop-shadow-sm">
-          {competitionName}
-        </h3>
-        <button className="text-[11px] font-bold text-muted-foreground hover:text-primary flex items-center gap-1 transition">
-          More <ChevronRight size={12} />
+    <div
+      className="sf-card overflow-hidden"
+      style={{ marginBottom: '8px' }}
+    >
+      {/* ── Competition header ──────────────────────────── */}
+      <div
+        className="comp-header flex items-center justify-between px-3"
+        style={{ height: '36px' }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Country flag placeholder */}
+          <div
+            className="w-4 h-4 rounded-sm shrink-0"
+            style={{ background: 'hsl(var(--surface-3))' }}
+          />
+          <span
+            className="text-xs font-semibold truncate"
+            style={{ color: 'hsl(var(--foreground))' }}
+          >
+            {competitionName}
+          </span>
+        </div>
+
+        <button
+          className="flex items-center gap-0.5 shrink-0 transition-colors"
+          style={{ color: 'hsl(var(--muted-foreground))', fontSize: '11px', fontWeight: 500 }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--primary))')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+        >
+          More <ChevronRight size={11} />
         </button>
       </div>
 
-      {/* Match rows */}
-      <div className="divide-y divide-white/5">
+      {/* ── Match rows ──────────────────────────────────── */}
+      <div>
         {matches.map((match) => (
           <MatchRow
             key={match.gameId}
@@ -35,18 +57,6 @@ export function CompetitionBlock({ competitionName, matches, showVotePrompt = tr
           />
         ))}
       </div>
-
-      {/* "Who will win? Cast your vote!" prompt at bottom of block (like SofaScore) */}
-      {showVotePrompt && matches.length > 0 && (
-        <div className="px-4 py-2 border-t border-white/10 bg-white/5 text-center">
-          <button
-            onClick={() => alert("Vote for your favourite match!")}
-            className="text-xs font-bold text-primary hover:underline flex items-center justify-center gap-1 mx-auto"
-          >
-            Who will win? Cast your vote! 🗳️
-          </button>
-        </div>
-      )}
     </div>
   );
 }
